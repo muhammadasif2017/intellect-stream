@@ -1,0 +1,13 @@
+// Content Service owns this schema — DB-per-service boundary (SPEC, Decision 5).
+// Connection URL lives in prisma.config.ts (Prisma 7 convention).
+// Models are added at milestone 3 step 3 (Post) and step 5 (Outbox).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}

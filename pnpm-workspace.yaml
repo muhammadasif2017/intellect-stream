@@ -1,0 +1,7 @@
+autoInstallPeers: true
+onlyBuiltDependencies:
+  - nx
+  - "@swc/core"
+  - "@parcel/watcher"
+  - less
+  - unrs-resolver
