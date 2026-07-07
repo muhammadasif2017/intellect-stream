@@ -70,6 +70,7 @@ intellect-stream/
 
 ## Decisions Log
 Each entry: decision + trade-off accepted. Add one line per architectural decision as it's made.
+Expensive-to-reverse decisions get a full ADR in `docs/decisions/` (context, alternatives, consequences); this log stays the one-line index.
 
 > **Note on entries 4–10:** these are *provisional defaults*, logged ahead of their milestones. At each relevant milestone, re-derive the decision from first principles before opening this log — then confirm or overturn the entry. Overturning a provisional decision with a good reason is a stronger interview story than following all of them. Entries 1–3 and 11 are applied/confirmed.
 

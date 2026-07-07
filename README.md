@@ -1,101 +1,53 @@
 # IntellectStream
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+AI-powered content moderation and analytics platform, built as an event-driven microservice system. A learning project: every architectural decision is recorded and defensible (see [SPEC.md](./SPEC.md) and [docs/decisions/](./docs/decisions/)).
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+**Flow:** post created → moderation job queued (outbox → RabbitMQ) → Cloudflare Workers AI verdict → result event → analytics aggregated (Kafka) → user notified (WebSocket).
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/nest?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
-
-## Run tasks
-
-To run the dev server for your app, use:
+## Quick Start
 
 ```sh
-npx nx serve intellect-stream
+pnpm install
+cp .env.example .env          # local defaults match docker-compose
+docker compose up -d           # Redis, RabbitMQ, Kafka (KRaft), Postgres — wait for healthy
+pnpm db:generate               # generate Prisma client
+pnpm nx serve content-service  # or any other service
 ```
 
-To create a production bundle:
+## Services
 
-```sh
-npx nx build intellect-stream
-```
+| Service | Port | Role |
+|---|---|---|
+| api-gateway | 3000 | REST entry, Redis rate-limit + session |
+| content-service | 3001 | Posts CRUD, Postgres, outbox publisher |
+| ai-processing-service | 3002 | RabbitMQ consumer → Cloudflare Workers AI |
+| analytics-service | 3003 | Kafka consumer, trend aggregation |
+| notification-service | 3004 | WebSocket gateway, real-time alerts |
 
-To see all available targets to run for a project, run:
+Shared libs: `shared-dtos` (message contracts/envelope), `shared-config` (zod env validation).
 
-```sh
-npx nx show project intellect-stream
-```
+## Commands
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+| Command | Description |
+|---|---|
+| `pnpm nx serve <service>` | Run one service in dev mode |
+| `pnpm nx test <project>` | Unit tests for a project |
+| `pnpm nx run-many -t lint test build` | Full CI target set locally |
+| `pnpm db:generate` | Regenerate Prisma client |
+| `pnpm db:migrate` | Create/apply a migration |
+| `pnpm db:studio` | Browse the database |
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Infra UIs: RabbitMQ management at `http://localhost:15672` (admin/admin, dev only).
 
-## Add new projects
+## Architecture
 
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
+- **Commands vs facts:** moderation jobs ride RabbitMQ (work queue: ack/retry/DLQ); domain events ride Kafka (retained, replayable log). [ADR-0001](./docs/decisions/ADR-0001-rabbitmq-for-jobs-kafka-for-events.md)
+- **Consistency:** transactional outbox + polling relay; at-least-once delivery with idempotent consumers. [ADR-0002](./docs/decisions/ADR-0002-transactional-outbox-with-polling-relay.md)
+- **Boundaries:** database per service, integration only via REST + events. [ADR-0004](./docs/decisions/ADR-0004-database-per-service.md)
+- **Contracts:** every message wrapped in a shared envelope (messageId, correlationId, eventType/Version). [ADR-0006](./docs/decisions/ADR-0006-message-envelope-and-relay-routing.md)
 
-Use the plugin's generator to create new projects.
+Decision index with trade-offs: [SPEC.md → Decisions Log](./SPEC.md). Interview-ready deep dives: [docs/interview-questions.md](./docs/interview-questions.md).
 
-To generate a new application, use:
+## Project Status
 
-```sh
-npx nx g @nx/nest:app demo
-```
-
-To generate a new library, use:
-
-```sh
-npx nx g @nx/node:lib mylib
-```
-
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
-
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Set up CI!
-
-### Step 1
-
-To connect to Nx Cloud, run the following command:
-
-```sh
-npx nx connect
-```
-
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
-
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-### Step 2
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
-```
-
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Install Nx Console
-
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
-
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Useful links
-
-Learn more:
-
-- [Learn more about this workspace setup](https://nx.dev/nx-api/nest?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Milestones 1–2 complete (infra, workspace). Milestone 3 in progress (Content Service: Prisma 7 wired; Post model, CRUD, and outbox next). Roadmap in [SPEC.md](./SPEC.md).
