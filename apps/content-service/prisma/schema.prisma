@@ -11,3 +11,18 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum ModerationStatus {
+  pending
+  approved
+  rejected
+}
+
+model Post {
+  id          String           @id @default(cuid())
+  authorId    String
+  content     String
+  status      ModerationStatus @default(pending)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
