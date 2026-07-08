@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { REDIS_CLIENT } from '@intellect-stream/shared-redis';
 import type { Request, Response } from 'express';
 import type { RedisClientType } from 'redis';
-import { REDIS_CLIENT } from '../redis/redis.module';
 
 // Fixed-window counter keyed by IP (SPEC: "API Gateway — Redis rate-limit").
 // Tradeoff of fixed window vs sliding window/token bucket: simpler, but a
