@@ -8,6 +8,7 @@ export const gatewayEnvSchema = baseEnvSchema.extend({
   REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
   SESSION_SECRET: z.string().min(1, 'SESSION_SECRET is required'),
   INTERNAL_JWT_SECRET: z.string().min(1, 'INTERNAL_JWT_SECRET is required'),
+  CONTENT_SERVICE_URL: z.string().min(1, 'CONTENT_SERVICE_URL is required'),
 });
 
 export type GatewayEnv = z.infer<typeof gatewayEnvSchema>;

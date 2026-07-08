@@ -6,6 +6,7 @@ import { validateEnv } from './env';
 import { PrismaModule } from './prisma/prisma.module';
 import { PostsModule } from './posts/posts.module';
 import { OutboxModule } from './outbox/outbox.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { OutboxModule } from './outbox/outbox.module';
       validate: validateEnv,
     }),
     PrismaModule,
+    AuthModule,
     PostsModule,
     OutboxModule,
   ],

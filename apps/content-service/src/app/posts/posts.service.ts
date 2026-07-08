@@ -10,9 +10,9 @@ import { Prisma } from "../../generated/prisma/client";
 export class PostsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(dto: CreatePostDto) {
+  create(authorId: string, dto: CreatePostDto) {
     return this.prisma.$transaction(async (tx) => {
-      const post = await tx.post.create({ data: dto });
+      const post = await tx.post.create({ data: { ...dto, authorId } });
 
       await tx.outboxMessage.create({
         data: {

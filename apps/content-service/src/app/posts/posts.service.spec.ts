@@ -35,13 +35,16 @@ describe('PostsService', () => {
     service = module.get(PostsService);
   });
 
-  it('create() writes the post and an outbox row in the same transaction', async () => {
-    const dto = { authorId: 'u1', content: 'hi' };
-    prismaMock.post.create.mockResolvedValue({ id: 'p1', ...dto });
-    const result = await service.create(dto);
+  it('create() writes the post (authorId from the caller, not the dto) and an outbox row in the same transaction', async () => {
+    const dto = { content: 'hi' };
+    const expected = { id: 'p1', authorId: 'u1', content: 'hi' };
+    prismaMock.post.create.mockResolvedValue(expected);
+    const result = await service.create('u1', dto);
 
     expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
-    expect(prismaMock.post.create).toHaveBeenCalledWith({ data: dto });
+    expect(prismaMock.post.create).toHaveBeenCalledWith({
+      data: { content: 'hi', authorId: 'u1' },
+    });
     expect(prismaMock.outboxMessage.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         eventType: 'moderation.job',
@@ -50,7 +53,7 @@ describe('PostsService', () => {
         correlationId: expect.any(String),
       }),
     });
-    expect(result).toEqual({ id: 'p1', ...dto });
+    expect(result).toEqual(expected);
   });
 
   it('findAll() passes skip/take through to prisma', async () => {
