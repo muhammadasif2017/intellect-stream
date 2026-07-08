@@ -5,6 +5,7 @@ import { baseEnvSchema, createEnvValidator } from '@intellect-stream/shared-conf
 // the shared lib owns the validation mechanism.
 export const contentServiceEnvSchema = baseEnvSchema.extend({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  RABBITMQ_URL: z.string().min(1, 'RABBITMQ_URL is required'),
 });
 
 export type ContentServiceEnv = z.infer<typeof contentServiceEnvSchema>;

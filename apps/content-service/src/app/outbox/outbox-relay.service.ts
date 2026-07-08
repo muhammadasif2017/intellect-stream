@@ -1,0 +1,59 @@
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Interval } from '@nestjs/schedule';
+import { PrismaService } from '../prisma/prisma.service';
+import { PUBLISHER, Publisher } from './publisher.interface';
+import { RELAY_ROUTING } from './relay-routing.config';
+
+const POLL_INTERVAL_MS = 5000;
+const BATCH_SIZE = 20;
+
+@Injectable()
+export class OutboxRelayService {
+  private readonly logger = new Logger(OutboxRelayService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(PUBLISHER) private readonly publisher: Publisher,
+  ) {}
+
+  @Interval(POLL_INTERVAL_MS)
+  async poll() {
+    const pending = await this.prisma.outboxMessage.findMany({
+      where: { publishedAt: null },
+      take: BATCH_SIZE,
+      orderBy: { occurredAt: 'asc' },
+    });
+
+    for (const row of pending) {
+      const destination = RELAY_ROUTING[row.eventType];
+      if (!destination) {
+        this.logger.error(
+          `No relay route for eventType "${row.eventType}" (outbox row ${row.id}) — left pending`,
+        );
+        continue;
+      }
+
+      try {
+        await this.publisher.publish(destination, {
+          messageId: row.id,
+          correlationId: row.correlationId,
+          eventType: row.eventType,
+          eventVersion: row.eventVersion,
+          occurredAt: row.occurredAt,
+          source: row.source,
+          payload: row.payload,
+        });
+
+        await this.prisma.outboxMessage.update({
+          where: { id: row.id },
+          data: { publishedAt: new Date() },
+        });
+      } catch (err) {
+        this.logger.error(
+          `Failed to publish outbox row ${row.id}, will retry next poll`,
+          err as Error,
+        );
+      }
+    }
+  }
+}

@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { validateEnv } from './env';
 import { PrismaModule } from './prisma/prisma.module';
 import { PostsModule } from './posts/posts.module';
+import { OutboxModule } from './outbox/outbox.module';
 
 @Module({
   imports: [
@@ -13,7 +14,8 @@ import { PostsModule } from './posts/posts.module';
       validate: validateEnv,
     }),
     PrismaModule,
-    PostsModule
+    PostsModule,
+    OutboxModule,
   ],
   controllers: [AppController],
   providers: [AppService],
