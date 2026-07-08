@@ -10,6 +10,6 @@ import { SessionGuard } from './session.guard';
   imports: [PrismaModule, JwtModule.register({})],
   controllers: [AuthController],
   providers: [AuthService, SessionGuard, InternalTokenService],
-  exports: [InternalTokenService],
+  exports: [InternalTokenService, SessionGuard],
 })
 export class AuthModule {}
