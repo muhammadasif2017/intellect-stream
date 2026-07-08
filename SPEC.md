@@ -95,7 +95,6 @@ Expensive-to-reverse decisions get a full ADR in `docs/decisions/` (context, alt
 Decisions still to be made, owned by the engineer at the stated milestone. Move each to the Decisions Log once resolved.
 
 - **User identity model** (milestone 4, blocks milestone 7): auth *transport/trust* shape is decided (Decision 15, ADR-0007), but not where identity itself is issued. Spec has no Users service or user model, yet posts have authors and Notification Service needs a userId→socket mapping — milestone 7 cannot work without identity. Decide where the user concern lives: minimal users module inside the gateway (register/login, hashed passwords, token issue — smallest scope) vs dedicated identity service (another service to build and operate). Downstream services consume identity only via gateway-forwarded claims either way.
-- Move compose credentials to `.env` references (milestone 4 cleanup item).
 - **Analytics persistence** (milestone 6): where aggregates live — Redis, Postgres (own DB), or in-memory with replay-on-restart. Interacts with Kafka retention/replay decision.
 - **Notification Service feed + socket registry** (milestone 7): which transport feeds it (Kafka consumer group per instance vs Redis pub/sub) and where userId→socket mapping lives. Interview doc Q13 describes a *proposed* design (Redis pub/sub broadcast) — it is not yet decided.
 
