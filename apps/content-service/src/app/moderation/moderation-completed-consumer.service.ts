@@ -3,7 +3,6 @@ import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
 import { MessageEnvelope, RabbitMqConsumer } from '@intellect-stream/shared-messaging';
 import {
-  MODERATION_COMPLETED_DLQ,
   MODERATION_COMPLETED_QUEUE,
   ModerationCompletedPayload,
 } from '@intellect-stream/shared-dtos';
@@ -21,7 +20,7 @@ export class ModerationCompletedConsumerService implements OnModuleInit {
 
   async onModuleInit() {
     await this.consumer.consume<ModerationCompletedPayload>(
-      { queue: MODERATION_COMPLETED_QUEUE, deadLetterQueue: MODERATION_COMPLETED_DLQ },
+      { queue: MODERATION_COMPLETED_QUEUE },
       (envelope) => this.handle(envelope),
     );
   }

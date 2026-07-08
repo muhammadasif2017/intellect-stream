@@ -12,7 +12,6 @@ import {
 import {
   MODERATION_COMPLETED_EVENT_TYPE,
   MODERATION_COMPLETED_QUEUE,
-  MODERATION_JOB_DLQ,
   MODERATION_JOB_QUEUE,
   ModerationCompletedPayload,
   ModerationJobPayload,
@@ -38,7 +37,7 @@ export class ModerationConsumerService implements OnModuleInit {
 
   async onModuleInit() {
     await this.consumer.consume<ModerationJobPayload>(
-      { queue: MODERATION_JOB_QUEUE, deadLetterQueue: MODERATION_JOB_DLQ },
+      { queue: MODERATION_JOB_QUEUE },
       (envelope) => this.handle(envelope),
     );
   }

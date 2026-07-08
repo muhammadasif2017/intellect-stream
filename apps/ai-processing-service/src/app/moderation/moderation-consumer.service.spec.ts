@@ -42,9 +42,9 @@ describe('ModerationConsumerService', () => {
     ) => Promise<void>;
   }
 
-  it('subscribes to the moderation.job queue with its DLQ', () => {
+  it('subscribes to the moderation.job queue', () => {
     expect(consumerMock.consume).toHaveBeenCalledWith(
-      { queue: 'moderation.job', deadLetterQueue: 'moderation.job.dlq' },
+      { queue: 'moderation.job' },
       expect.any(Function),
     );
   });

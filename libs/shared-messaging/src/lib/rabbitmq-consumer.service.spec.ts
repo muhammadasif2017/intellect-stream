@@ -50,18 +50,8 @@ describe('RabbitMqConsumer', () => {
     ).rejects.toThrow('RabbitMQ channel not initialized');
   });
 
-  it('asserts only the main queue when no dead-letter queue is given', async () => {
+  it('asserts the DLQ and wires the main queue to it automatically', async () => {
     await consumer.consume({ queue: 'moderation.job' }, jest.fn());
-
-    expect(channel.assertQueue).toHaveBeenCalledTimes(1);
-    expect(channel.assertQueue).toHaveBeenCalledWith('moderation.job', { durable: true });
-  });
-
-  it('asserts the DLQ and wires the main queue to it when given', async () => {
-    await consumer.consume(
-      { queue: 'moderation.job', deadLetterQueue: 'moderation.job.dlq' },
-      jest.fn(),
-    );
 
     expect(channel.assertQueue).toHaveBeenNthCalledWith(1, 'moderation.job.dlq', {
       durable: true,

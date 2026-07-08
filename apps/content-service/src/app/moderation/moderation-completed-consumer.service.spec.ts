@@ -51,9 +51,9 @@ describe('ModerationCompletedConsumerService', () => {
     ) => Promise<void>;
   }
 
-  it('subscribes to the moderation.completed queue with its DLQ', () => {
+  it('subscribes to the moderation.completed queue', () => {
     expect(consumerMock.consume).toHaveBeenCalledWith(
-      { queue: 'moderation.completed', deadLetterQueue: 'moderation.completed.dlq' },
+      { queue: 'moderation.completed' },
       expect.any(Function),
     );
   });

@@ -5,12 +5,11 @@ import { IsArray, IsIn, IsNotEmpty, IsString } from 'class-validator';
 export const MODERATION_JOB_EVENT_TYPE = 'moderation.job';
 export const MODERATION_COMPLETED_EVENT_TYPE = 'moderation.completed';
 
-// Queue names. Each has a matching DLQ (decision 10: one failure is
-// terminal, no automated retry — see RabbitMqConsumer).
+// Queue names. Each gets a matching DLQ automatically (see
+// assertQueueTopology in shared-messaging) — decision 10: one failure is
+// terminal, no automated retry.
 export const MODERATION_JOB_QUEUE = 'moderation.job';
-export const MODERATION_JOB_DLQ = 'moderation.job.dlq';
 export const MODERATION_COMPLETED_QUEUE = 'moderation.completed';
-export const MODERATION_COMPLETED_DLQ = 'moderation.completed.dlq';
 
 export class ModerationJobPayload {
   @IsString()

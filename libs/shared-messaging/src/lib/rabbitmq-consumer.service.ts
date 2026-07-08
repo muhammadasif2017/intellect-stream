@@ -2,15 +2,10 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import * as amqp from 'amqplib';
 import { MessageEnvelope } from './message-envelope';
+import { assertQueueTopology } from './queue-topology';
 
 export interface ConsumeOptions {
   queue: string;
-  /**
-   * Queue a failed message is routed to instead of being dropped. No
-   * automated retry/replay (decision 10) — one processing failure is
-   * terminal for the message, logged, and left for manual replay.
-   */
-  deadLetterQueue?: string;
   prefetch?: number;
 }
 
@@ -41,18 +36,7 @@ export class RabbitMqConsumer implements OnModuleInit, OnModuleDestroy {
     }
     const channel = this.channel;
 
-    if (options.deadLetterQueue) {
-      await channel.assertQueue(options.deadLetterQueue, { durable: true });
-    }
-    await channel.assertQueue(options.queue, {
-      durable: true,
-      ...(options.deadLetterQueue && {
-        arguments: {
-          'x-dead-letter-exchange': '',
-          'x-dead-letter-routing-key': options.deadLetterQueue,
-        },
-      }),
-    });
+    await assertQueueTopology(channel, options.queue);
     await channel.prefetch(options.prefetch ?? 10);
 
     await channel.consume(options.queue, async (msg) => {
