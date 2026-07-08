@@ -4,7 +4,15 @@
   "sourceRoot": "apps/content-service/src",
   "projectType": "application",
   "targets": {
+    "prisma-generate": {
+      "cache": false,
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "prisma generate"
+      }
+    },
     "build": {
+      "dependsOn": ["prisma-generate"],
       "executor": "nx:run-commands",
       "options": {
         "command": "webpack-cli build",
@@ -20,6 +28,9 @@
           }
         }
       }
+    },
+    "test": {
+      "dependsOn": ["prisma-generate"]
     },
     "prune-lockfile": {
       "dependsOn": ["build"],

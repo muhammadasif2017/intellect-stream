@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { randomUUID } from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreatePostDto } from "./dto/create-post.dto";
 import { UpdatePostDto } from "./dto/update-post.dto";
@@ -10,7 +11,20 @@ export class PostsService {
   constructor(private readonly prisma: PrismaService) {}
 
   create(dto: CreatePostDto) {
-    return this.prisma.post.create({ data: dto });
+    return this.prisma.$transaction(async (tx) => {
+      const post = await tx.post.create({ data: dto });
+
+      await tx.outboxMessage.create({
+        data: {
+          correlationId: randomUUID(),
+          eventType: 'moderation.job',
+          source: 'content-service',
+          payload: { postId: post.id, content: post.content },
+        },
+      });
+
+      return post;
+    });
   }
 
   findAll(params: { skip: number; take: number }) {

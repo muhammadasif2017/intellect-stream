@@ -49,6 +49,11 @@ jobs:
 
       # Prepend any command with "nx record --" to record its logs to Nx Cloud
       # - run: pnpm exec nx record -- echo Hello World
+      # content-service:build/test depend on the prisma-generate Nx target
+      # (uncached, always reruns — see docs/bugs/BUG-0002/BUG-0003), which
+      # needs the same DATABASE_URL placeholder as the db:generate step above.
       - run: pnpm exec nx run-many -t lint test build
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
       # "nx fix-ci" (self-healing CI) requires an Nx Cloud connection —
       # re-add it after running "nx connect" if we adopt Nx Cloud.
