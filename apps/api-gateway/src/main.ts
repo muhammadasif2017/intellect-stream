@@ -8,8 +8,9 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { RedisStore } from 'connect-redis';
 import session from 'express-session';
-import { createClient } from 'redis';
+import type { RedisClientType } from 'redis';
 import { AppModule } from './app/app.module';
+import { REDIS_CLIENT } from './app/redis/redis.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -18,10 +19,9 @@ async function bootstrap() {
   );
 
   const config = app.get(ConfigService);
-
-  const redisClient = createClient({ url: config.getOrThrow<string>('REDIS_URL') });
-  redisClient.on('error', (err) => Logger.error('Redis client error', err, 'Session'));
-  await redisClient.connect();
+  // Same connection the rate-limit guard uses — one Redis client for the
+  // whole app instead of each concern opening its own.
+  const redisClient = app.get<RedisClientType>(REDIS_CLIENT);
 
   const isProduction = config.get<string>('NODE_ENV') === 'production';
   app.use(
