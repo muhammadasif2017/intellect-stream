@@ -1,0 +1,20 @@
+// API Gateway owns this schema — DB-per-service boundary (ADR-0004).
+// Connection URL lives in apps/api-gateway/prisma.config.ts (Prisma 7 convention).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
