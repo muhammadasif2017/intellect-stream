@@ -15,7 +15,11 @@
     "skipDefaultLibCheck": true,
     "paths": {
       "@intellect-stream/shared-dtos": ["./libs/shared-dtos/src/index.ts"],
-      "@intellect-stream/shared-config": ["./libs/shared-config/src/index.ts"]
+      "@intellect-stream/shared-config": ["./libs/shared-config/src/index.ts"],
+      "@intellect-stream/shared-messaging": [
+        "./libs/shared-messaging/src/index.ts"
+      ],
+      "@intellect-stream/shared-redis": ["./libs/shared-redis/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
