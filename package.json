@@ -5,7 +5,10 @@
   "scripts": {
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:generate:gateway": "prisma generate --config apps/api-gateway/prisma.config.ts",
+    "db:migrate:gateway": "prisma migrate dev --config apps/api-gateway/prisma.config.ts",
+    "db:studio:gateway": "prisma studio --config apps/api-gateway/prisma.config.ts"
   },
   "private": true,
   "dependencies": {
