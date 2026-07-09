@@ -9,7 +9,7 @@ import { OutboxRelayService } from './outbox-relay.service';
     PrismaModule,
     ScheduleModule.forRoot(),
     SharedMessagingModule,
-    KafkaMessagingModule,
+    KafkaMessagingModule.forRoot({ clientId: 'content-service' }),
   ],
   providers: [OutboxRelayService],
 })

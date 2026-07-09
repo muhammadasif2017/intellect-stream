@@ -1,6 +1,7 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Kafka, Producer } from 'kafkajs';
+import { KAFKA_CLIENT_ID } from './kafka-client-id.token';
 import { Publisher } from './publisher.interface';
 
 interface EnvelopeWithPostId {
@@ -20,12 +21,14 @@ export class KafkaPublisher implements Publisher, OnModuleInit, OnModuleDestroy 
   private readonly logger = new Logger(KafkaPublisher.name);
   private producer?: Producer;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    @Inject(KAFKA_CLIENT_ID) private readonly clientId: string,
+  ) {}
 
   async onModuleInit() {
     const brokers = this.config.getOrThrow<string>('KAFKA_BROKERS').split(',');
-    const clientId = this.config.getOrThrow<string>('KAFKA_CLIENT_ID');
-    const kafka = new Kafka({ clientId, brokers });
+    const kafka = new Kafka({ clientId: this.clientId, brokers });
     this.producer = kafka.producer();
     await this.producer.connect();
   }

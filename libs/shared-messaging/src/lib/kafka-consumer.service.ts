@@ -1,6 +1,7 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Consumer, Kafka } from 'kafkajs';
+import { KAFKA_CLIENT_ID } from './kafka-client-id.token';
 import { MessageEnvelope } from './message-envelope';
 
 export interface KafkaConsumeOptions {
@@ -17,15 +18,17 @@ export class KafkaConsumer implements OnModuleDestroy {
   private readonly logger = new Logger(KafkaConsumer.name);
   private consumer?: Consumer;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    @Inject(KAFKA_CLIENT_ID) private readonly clientId: string,
+  ) {}
 
   async consume<TPayload = unknown>(
     options: KafkaConsumeOptions,
     handler: KafkaEnvelopeHandler<TPayload>,
   ): Promise<void> {
     const brokers = this.config.getOrThrow<string>('KAFKA_BROKERS').split(',');
-    const clientId = this.config.getOrThrow<string>('KAFKA_CLIENT_ID');
-    const kafka = new Kafka({ clientId, brokers });
+    const kafka = new Kafka({ clientId: this.clientId, brokers });
     this.consumer = kafka.consumer({ groupId: options.groupId });
 
     await this.consumer.connect();

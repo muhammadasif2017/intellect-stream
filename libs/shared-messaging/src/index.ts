@@ -6,4 +6,5 @@ export * from './lib/rabbitmq-consumer.service';
 export * from './lib/shared-messaging.module';
 export * from './lib/kafka-publisher.service';
 export * from './lib/kafka-consumer.service';
+export * from './lib/kafka-client-id.token';
 export * from './lib/kafka-messaging.module';
