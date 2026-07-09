@@ -1,0 +1,68 @@
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { validateOrReject } from 'class-validator';
+import { KafkaConsumer, MessageEnvelope } from '@intellect-stream/shared-messaging';
+import {
+  MODERATION_COMPLETED_TOPIC,
+  ModerationCompletedPayload,
+} from '@intellect-stream/shared-dtos';
+import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '../../generated/prisma/client';
+
+const CONSUMER_GROUP_ID = 'analytics-service';
+
+// No categories on an approved verdict is the common case — still counted,
+// under a sentinel bucket, so verdict trends aren't silently dropped.
+const UNCATEGORIZED = 'none';
+
+function toDateOnly(occurredAt: Date | string): Date {
+  const d = new Date(occurredAt);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+@Injectable()
+export class TrendsService implements OnModuleInit {
+  private readonly logger = new Logger(TrendsService.name);
+
+  constructor(
+    private readonly consumer: KafkaConsumer,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  async onModuleInit() {
+    await this.consumer.consume<ModerationCompletedPayload>(
+      { topic: MODERATION_COMPLETED_TOPIC, groupId: CONSUMER_GROUP_ID },
+      (envelope) => this.handle(envelope),
+    );
+  }
+
+  private async handle(envelope: MessageEnvelope<ModerationCompletedPayload>) {
+    const payload = plainToInstance(ModerationCompletedPayload, envelope.payload);
+    await validateOrReject(payload);
+
+    const date = toDateOnly(envelope.occurredAt);
+    const categories = payload.categories.length > 0 ? payload.categories : [UNCATEGORIZED];
+
+    try {
+      // Decision 6: DB consumer dedupes via unique constraint, written in the
+      // same transaction as the state change it guards.
+      await this.prisma.$transaction(async (tx) => {
+        await tx.processedMessage.create({ data: { messageId: envelope.messageId } });
+
+        for (const category of categories) {
+          await tx.moderationTrend.upsert({
+            where: { date_category_verdict: { date, category, verdict: payload.verdict } },
+            create: { date, category, verdict: payload.verdict, count: 1 },
+            update: { count: { increment: 1 } },
+          });
+        }
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        this.logger.warn(`Duplicate delivery of message ${envelope.messageId}, skipping`);
+        return;
+      }
+      throw err;
+    }
+  }
+}
