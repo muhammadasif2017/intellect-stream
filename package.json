@@ -80,7 +80,14 @@
     "onlyBuiltDependencies": [
       "@prisma/engines",
       "bcrypt",
-      "prisma"
+      "prisma",
+      "unrs-resolver"
+    ],
+    "ignoredBuiltDependencies": [
+      "@parcel/watcher",
+      "@swc/core",
+      "less",
+      "nx"
     ]
   }
 }
