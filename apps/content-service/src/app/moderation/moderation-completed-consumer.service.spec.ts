@@ -6,6 +6,7 @@ import { ModerationCompletedConsumerService } from './moderation-completed-consu
 const prismaMock = {
   processedMessage: { create: jest.fn() },
   post: { update: jest.fn() },
+  outboxMessage: { create: jest.fn() },
   $transaction: jest.fn(),
 };
 prismaMock.$transaction.mockImplementation((cb: (tx: typeof prismaMock) => unknown) =>
@@ -67,6 +68,19 @@ describe('ModerationCompletedConsumerService', () => {
     expect(prismaMock.post.update).toHaveBeenCalledWith({
       where: { id: 'p1' },
       data: { status: 'approved' },
+    });
+  });
+
+  it('writes an outbox row for the Kafka relay, carrying the correlationId forward', async () => {
+    await getHandler()(envelope);
+
+    expect(prismaMock.outboxMessage.create).toHaveBeenCalledWith({
+      data: {
+        correlationId: 'c1',
+        eventType: 'moderation.completed',
+        source: 'content-service',
+        payload: { postId: 'p1', verdict: 'approved', categories: [] },
+      },
     });
   });
 

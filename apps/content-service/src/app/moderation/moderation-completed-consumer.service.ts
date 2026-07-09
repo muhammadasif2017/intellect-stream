@@ -3,6 +3,7 @@ import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
 import { MessageEnvelope, RabbitMqConsumer } from '@intellect-stream/shared-messaging';
 import {
+  MODERATION_COMPLETED_EVENT_TYPE,
   MODERATION_COMPLETED_QUEUE,
   ModerationCompletedPayload,
 } from '@intellect-stream/shared-dtos';
@@ -37,6 +38,23 @@ export class ModerationCompletedConsumerService implements OnModuleInit {
         await tx.post.update({
           where: { id: payload.postId },
           data: { status: payload.verdict },
+        });
+        // ADR-0009: relay this fact onward to Kafka via the outbox, in the
+        // same transaction as the state change above — not a second publish
+        // call from a stateless handler (see BUG-0005). correlationId is
+        // carried forward, not re-minted, so the whole chain traces as one
+        // request (decision 8).
+        await tx.outboxMessage.create({
+          data: {
+            correlationId: envelope.correlationId,
+            eventType: MODERATION_COMPLETED_EVENT_TYPE,
+            source: 'content-service',
+            payload: {
+              postId: payload.postId,
+              verdict: payload.verdict,
+              categories: payload.categories,
+            } as unknown as Prisma.InputJsonValue,
+          },
         });
       });
     } catch (err) {
