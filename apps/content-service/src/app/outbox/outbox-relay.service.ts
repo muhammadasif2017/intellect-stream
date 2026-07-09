@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
+import { PUBLISHER, Publisher } from '@intellect-stream/shared-messaging';
 import { PrismaService } from '../prisma/prisma.service';
-import { PUBLISHER, Publisher } from './publisher.interface';
 import { RELAY_ROUTING } from './relay-routing.config';
 
 const POLL_INTERVAL_MS = 5000;

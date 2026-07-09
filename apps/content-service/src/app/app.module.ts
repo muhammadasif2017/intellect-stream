@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { PostsModule } from './posts/posts.module';
 import { OutboxModule } from './outbox/outbox.module';
 import { AuthModule } from './auth/auth.module';
+import { ModerationModule } from './moderation/moderation.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AuthModule } from './auth/auth.module';
     AuthModule,
     PostsModule,
     OutboxModule,
+    ModerationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

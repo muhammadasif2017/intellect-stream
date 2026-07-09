@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
+import { SharedMessagingModule } from '@intellect-stream/shared-messaging';
 import { PrismaModule } from '../prisma/prisma.module';
 import { OutboxRelayService } from './outbox-relay.service';
-import { PUBLISHER } from './publisher.interface';
-import { RabbitMqPublisher } from './rabbitmq-publisher.service';
 
 @Module({
-  imports: [PrismaModule, ScheduleModule.forRoot()],
-  providers: [OutboxRelayService, { provide: PUBLISHER, useClass: RabbitMqPublisher }],
+  imports: [PrismaModule, ScheduleModule.forRoot(), SharedMessagingModule],
+  providers: [OutboxRelayService],
 })
 export class OutboxModule {}

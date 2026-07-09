@@ -9,8 +9,8 @@ import { NestFactory } from '@nestjs/core';
 import { RedisStore } from 'connect-redis';
 import session from 'express-session';
 import type { RedisClientType } from 'redis';
+import { REDIS_CLIENT } from '@intellect-stream/shared-redis';
 import { AppModule } from './app/app.module';
-import { REDIS_CLIENT } from './app/redis/redis.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

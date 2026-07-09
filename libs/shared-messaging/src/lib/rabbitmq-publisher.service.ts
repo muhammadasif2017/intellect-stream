@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import * as amqp from 'amqplib';
 import { Publisher } from './publisher.interface';
+import { assertQueueTopology } from './queue-topology';
 
 @Injectable()
 export class RabbitMqPublisher implements Publisher, OnModuleInit, OnModuleDestroy {
@@ -21,7 +22,7 @@ export class RabbitMqPublisher implements Publisher, OnModuleInit, OnModuleDestr
     if (!this.channel) {
       throw new Error('RabbitMQ channel not initialized');
     }
-    await this.channel.assertQueue(destination, { durable: true });
+    await assertQueueTopology(this.channel, destination);
     this.channel.sendToQueue(destination, Buffer.from(JSON.stringify(message)), {
       persistent: true,
     });

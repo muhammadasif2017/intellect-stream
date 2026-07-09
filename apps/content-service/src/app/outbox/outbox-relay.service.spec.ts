@@ -1,8 +1,8 @@
 import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { PUBLISHER } from '@intellect-stream/shared-messaging';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutboxRelayService } from './outbox-relay.service';
-import { PUBLISHER } from './publisher.interface';
 
 const prismaMock = {
   outboxMessage: {

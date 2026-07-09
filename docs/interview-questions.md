@@ -334,4 +334,43 @@ The standard solution is a shared broadcast layer: each instance subscribes to R
 
 ---
 
+## 14. Decision 6 says "idempotency via outbox-row UUID as message ID, deduped per consumer at build time." Milestone 5 built two consumers — why do they use two different dedupe mechanisms for the same decision?
+
+**Short answer:** AI Processing Service (stateless, no DB) dedupes with Redis `SETNX` on the message id; Content Service (has Postgres) dedupes with a DB unique constraint written in the same transaction as the state change it guards. Same decision, different mechanism, because the two consumers have different storage available — decision 6 explicitly leaves the mechanism "decided per consumer at build time."
+
+**Detailed answer:**
+
+Both consumers need the same guarantee: RabbitMQ is at-least-once, so a crash between processing a message and acking it causes redelivery, and redelivery must not double-apply the effect. What differs is what each consumer can use to remember "I already did this."
+
+**Content Service — DB unique constraint.** It already has a transactional store, and the effect it's protecting (updating a post's moderation status) lives in that same store. So the dedupe row (`ProcessedMessage.messageId`, `@id` = unique) is written inside the *same* `$transaction` as the `Post` update:
+
+```
+await tx.processedMessage.create({ data: { messageId } });
+await tx.post.update({ where: { id: postId }, data: { status: verdict } });
+```
+
+If both succeed, the transaction commits atomically — the fact "processed" and the effect "post updated" can never disagree. If the message is redelivered, the second `processedMessage.create` throws a unique-constraint violation (`P2002`), the whole transaction rolls back including the *attempted* second `post.update`, and the consumer just logs and returns instead of erroring. This is the strongest form of dedupe available: it can't drift from the state it's protecting, because they commit or fail together.
+
+**AI Processing Service — Redis `SETNX`.** It has no database — its only effect is an HTTP call out (Cloudflare Workers AI) plus a message published back. There's nothing to wrap a DB transaction around. So the guard has to live in something that isn't the effect itself: Redis, claimed *before* the CF call and released *only on failure*:
+
+```
+const claimed = await redis.set(key, 'processing', { NX: true, EX: 300 });
+if (!claimed) return; // real duplicate, already in flight or done
+try {
+  // classify + publish
+  await redis.set(key, 'done', { EX: 86400 });
+} catch (err) {
+  await redis.del(key); // let a retry actually retry
+  throw err;
+}
+```
+
+The claim-then-release shape matters: if the key were only set *after* success (no upfront claim), two redeliveries arriving close together could both pass CF Workers AI and both publish — real double-processing, real double cost. If the key were claimed and *never released on failure*, a message that failed for a transient reason (CF Workers AI down for 10 seconds) would look "already handled" forever and a manual DLQ replay would silently no-op. The claim blocks concurrent duplicates; the release-on-failure keeps failure recoverable.
+
+The unifying principle: dedupe has to live somewhere at least as durable as the effect it's guarding, and as close to that effect as possible. A DB-backed consumer gets that for free via a transaction. A stateless consumer has to construct it explicitly, and has to think about the failure path the DB-transaction version gets automatically (rollback).
+
+**Interview one-liner:** *"Same idempotency decision, two mechanisms, because the two consumers have different storage. The DB consumer dedupes in the same transaction as its state change — they commit or fail together, which is the strongest guarantee you can get. The stateless consumer has nothing to transact against, so Redis SETNX simulates it: claim before the risky work, release only on failure, so a genuine retry can still retry but a true duplicate gets skipped."*
+
+---
+
 *Add new questions here as milestones complete. Format: question as asked in an interview, short answer first, detailed reasoning, then a one-liner you can deliver verbally.*

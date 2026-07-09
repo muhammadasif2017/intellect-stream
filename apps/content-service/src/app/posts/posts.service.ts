@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { randomUUID } from "crypto";
+import { MODERATION_JOB_EVENT_TYPE, ModerationJobPayload } from "@intellect-stream/shared-dtos";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreatePostDto } from "./dto/create-post.dto";
 import { UpdatePostDto } from "./dto/update-post.dto";
@@ -14,12 +15,15 @@ export class PostsService {
     return this.prisma.$transaction(async (tx) => {
       const post = await tx.post.create({ data: { ...dto, authorId } });
 
+      const payload: ModerationJobPayload = { postId: post.id, content: post.content };
       await tx.outboxMessage.create({
         data: {
           correlationId: randomUUID(),
-          eventType: 'moderation.job',
+          eventType: MODERATION_JOB_EVENT_TYPE,
           source: 'content-service',
-          payload: { postId: post.id, content: post.content },
+          // Prisma's Json input type wants an index signature a class instance
+          // doesn't structurally have — the payload is a plain data shape.
+          payload: payload as unknown as Prisma.InputJsonValue,
         },
       });
 

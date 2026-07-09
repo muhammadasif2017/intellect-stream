@@ -37,3 +37,11 @@ model OutboxMessage {
   payload      Json
   publishedAt  DateTime?
 }
+
+// Decision 6: DB consumers dedupe via a unique constraint on the message id.
+// Written in the same transaction as the post update it guards — a retried
+// delivery hits this row's unique constraint and is dropped, not reapplied.
+model ProcessedMessage {
+  messageId   String   @id
+  processedAt DateTime @default(now())
+}
