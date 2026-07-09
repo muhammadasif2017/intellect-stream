@@ -11,6 +11,10 @@ export const MODERATION_COMPLETED_EVENT_TYPE = 'moderation.completed';
 export const MODERATION_JOB_QUEUE = 'moderation.job';
 export const MODERATION_COMPLETED_QUEUE = 'moderation.completed';
 
+// Kafka topic the same moderation.completed fact is relayed onward to, from
+// Content Service's outbox, for Analytics Service to consume (ADR-0009).
+export const MODERATION_COMPLETED_TOPIC = 'moderation-completed-events';
+
 export class ModerationJobPayload {
   @IsString()
   @IsNotEmpty()
