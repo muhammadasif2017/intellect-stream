@@ -1,0 +1,4 @@
+# Postgres init scripts run inside a Linux container via
+# docker-entrypoint-initdb.d — CRLF breaks bash there ($'\r': command not
+# found). Force LF regardless of each developer's core.autocrlf setting.
+*.sh text eol=lf
