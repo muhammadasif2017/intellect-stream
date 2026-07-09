@@ -1,0 +1,33 @@
+// Analytics Service owns this schema — DB-per-service boundary (ADR-0004).
+// Connection URL lives in apps/analytics-service/prisma.config.ts (Prisma 7 convention).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ADR-0010: materialized read-model built from the moderation-completed-events
+// Kafka topic — disposable by design, correctness lives in the topic + dedupe
+// table below, not in this rollup being hand-maintained.
+model ModerationTrend {
+  id       String   @id @default(uuid())
+  date     DateTime @db.Date
+  category String
+  verdict  String
+  count    Int      @default(0)
+
+  @@unique([date, category, verdict])
+}
+
+// Decision 6: dedupe key = the outbox-minted messageId that produced the
+// Kafka message this service consumed, same pattern content-service uses on
+// itself for moderation.completed.
+model ProcessedMessage {
+  messageId   String   @id
+  processedAt DateTime @default(now())
+}

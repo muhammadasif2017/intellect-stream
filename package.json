@@ -9,6 +9,9 @@
     "db:generate:gateway": "prisma generate --config apps/api-gateway/prisma.config.ts",
     "db:migrate:gateway": "prisma migrate dev --config apps/api-gateway/prisma.config.ts",
     "db:studio:gateway": "prisma studio --config apps/api-gateway/prisma.config.ts",
+    "db:generate:analytics": "prisma generate --config apps/analytics-service/prisma.config.ts",
+    "db:migrate:analytics": "prisma migrate dev --config apps/analytics-service/prisma.config.ts",
+    "db:studio:analytics": "prisma studio --config apps/analytics-service/prisma.config.ts",
     "kafka:provision-topics": "node scripts/kafka-provision-topics.js"
   },
   "private": true,
