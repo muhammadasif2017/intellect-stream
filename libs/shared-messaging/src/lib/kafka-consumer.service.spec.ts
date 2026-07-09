@@ -77,14 +77,14 @@ describe('KafkaConsumer', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it('logs and does not throw when the handler rejects — no DLQ topic in this design', async () => {
+  it('propagates handler errors instead of swallowing them, so kafkajs retries and does not auto-commit', async () => {
     const handler = jest.fn().mockRejectedValue(new Error('boom'));
     await consumer.consume({ topic: 't', groupId: 'g' }, handler);
 
     await expect(
       getEachMessage()({ message: { value: Buffer.from(JSON.stringify({})) } }),
-    ).resolves.toBeUndefined();
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('t'), expect.any(Error));
+    ).rejects.toThrow('boom');
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 
   it('logs and skips on invalid JSON instead of throwing', async () => {

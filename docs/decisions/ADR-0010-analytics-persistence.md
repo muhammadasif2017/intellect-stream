@@ -42,10 +42,22 @@ Each consumed Kafka message is handled in one transaction: insert into
 hits a constraint violation and is treated as already-processed, same
 dedupe pattern content-service already uses per SPEC decision 6), then
 `upsert` the matching `ModerationTrend` row, incrementing `count`. This is a
-materialized read-model built entirely from the Kafka stream — the trend
-table can be dropped and rebuilt by replaying the topic from offset 0, which
-is the point of building it this way rather than treating it as a primary
-store.
+materialized read-model built entirely from the Kafka stream.
+
+Steady-state, the consumer resumes from its committed offset
+(`fromBeginning: false`) — replaying the whole topic on every restart would
+reprocess history it's already dedupe-safe against, for no benefit. "Rebuild
+from the stream" is a deliberate, manual recovery operation (truncate both
+tables, reset the consumer group's offsets to 0 or start a fresh group id),
+not something that happens implicitly on restart — same "log + alert, manual
+action" posture as decision 10's RabbitMQ DLQ replay, not an automated
+retention/replay pipeline.
+
+`KafkaConsumer` only catches and skips malformed-JSON messages (unrecoverable
+regardless of retry); everything else — including `TrendsService`'s own
+transient-failure rethrow — propagates to kafkajs, which retries rather than
+auto-committing the offset. That's what makes the at-least-once + dedupe
+story above actually hold for real failures, not just the happy path.
 
 ## Alternatives Considered
 
