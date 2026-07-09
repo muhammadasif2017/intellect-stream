@@ -373,4 +373,26 @@ The unifying principle: dedupe has to live somewhere at least as durable as the 
 
 ---
 
+## 15. Milestone 6 adds Kafka so Analytics Service can see moderation verdicts. Why does that fact flow through Content Service's outbox instead of AI Processing Service just publishing it to Kafka directly, the same way it already publishes to RabbitMQ?
+
+**Short answer:** A first-draft design did exactly that — dual-publish from AI Processing Service's stateless handler — and it was a dual-write bug caught in design review before any code was written (logged as BUG-0005). Two broker publishes with no shared transaction means a partial failure is invisible: RabbitMQ succeeds, Kafka fails, and nothing anywhere reports it. Routing the Kafka fact through Content Service's outbox instead reuses machinery that already solves exactly this problem for the DB→broker case.
+
+**Detailed answer:**
+
+The tempting design: AI Processing Service already publishes `moderation.completed` to RabbitMQ after calling Cloudflare Workers AI. Milestone 6 needs that same fact to also reach Kafka, so why not add a second `publisher.publish()` call right next to the first one?
+
+Trace the failure mode. The handler is stateless — no database, no transaction to wrap both publishes in. If the RabbitMQ publish succeeds and the Kafka publish then fails (broker hiccup, topic not provisioned yet, network blip), there is no error anywhere: the RabbitMQ leg already returned success, so the handler returns normally. Content Service updates the post's status correctly. Analytics Service simply never receives that event — a silent, permanent gap, undetectable without manually cross-checking counts between services. Worse: if that RabbitMQ message is ever DLQ-replayed, the handler mints a brand-new `messageId` (`randomUUID()`) on the retry, so even a *successful* replay produces a different id than the original attempt — defeating the dedupe mechanism (decision 6) a retry is supposed to be safe under.
+
+This is a dual-write: two independent systems updated from one piece of logic, no atomicity between them, no shared identity to reconcile a partial failure against. It's precisely the failure category the outbox pattern (decision 7) already exists to prevent for "update my DB and tell the world" — but AI Processing Service has no DB to anchor an outbox row in, so bolting a second publish onto its handler reintroduces the hazard one layer over, with nothing to catch it.
+
+The fix: don't publish from the point of origin at all. Content Service already consumes `moderation.completed` off RabbitMQ and updates the post row inside one Prisma transaction (`ProcessedMessage` insert + `Post` update, same commit or rollback). Add one more statement to that transaction: insert an outbox row for the same fact, carrying forward the original `correlationId` from the inbound envelope (not minting a new one — decision 8 wants the whole chain traceable as one request). The existing outbox relay — already at-least-once, already dedupe-safe, already the thing decision 14 built a `Publisher` interface and an `eventType → destination` routing table specifically to extend — picks the row up and routes it to Kafka. Analytics Service dedupes on that outbox-minted `messageId`, the exact same `ProcessedMessage` pattern Content Service uses on itself.
+
+Concretely, `RELAY_ROUTING` changed shape from `eventType → destination string` to `eventType → { broker, destination }`, and the relay resolves its publisher from a small `{ rabbitmq, kafka }` registry instead of a single injected one. `KafkaPublisher` is a second, independent implementation of the same `Publisher` interface — no coupling to `RabbitMqPublisher` — so the relay's routing logic doesn't know or care which concrete broker a given row ends up on.
+
+The tell that this was the intended path all along, not just a nicer alternative: decision 14's routing-table comment says verbatim that a destination-column-per-row design was rejected because "one event needs two destinations... duplicating rows would mint two messageIds for one fact and corrupt dedupe" — and that Kafka would "slot into the same seam at milestone 6." Dual-publishing from a second location skips that seam entirely; routing through the outbox is what the seam was built for.
+
+**Interview one-liner:** *"The naive move was to publish the verdict to Kafka right next to the existing RabbitMQ publish. That's a dual-write with no shared transaction and no shared identity across brokers — a partial failure is invisible, and a DLQ replay even mints a different message id than the original. The fix reuses the outbox: Content Service, which already updates the post in a transaction, adds one more row to that same transaction, and the existing relay — already at-least-once, already dedupe-safe — delivers it to Kafka. One durable source of truth instead of two independent publishes hoping they both land."*
+
+---
+
 *Add new questions here as milestones complete. Format: question as asked in an interview, short answer first, detailed reasoning, then a one-liner you can deliver verbally.*
