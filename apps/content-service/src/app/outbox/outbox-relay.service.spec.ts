@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { PUBLISHER } from '@intellect-stream/shared-messaging';
+import { KAFKA_PUBLISHER, PUBLISHER } from '@intellect-stream/shared-messaging';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutboxRelayService } from './outbox-relay.service';
 
@@ -12,6 +12,10 @@ const prismaMock = {
 };
 
 const publisherMock = {
+  publish: jest.fn(),
+};
+
+const kafkaPublisherMock = {
   publish: jest.fn(),
 };
 
@@ -39,6 +43,7 @@ describe('OutboxRelayService', () => {
         OutboxRelayService,
         { provide: PrismaService, useValue: prismaMock },
         { provide: PUBLISHER, useValue: publisherMock },
+        { provide: KAFKA_PUBLISHER, useValue: kafkaPublisherMock },
       ],
     }).compile();
     service = module.get(OutboxRelayService);
@@ -85,6 +90,26 @@ describe('OutboxRelayService', () => {
       where: { id: baseRow.id },
       data: { publishedAt: expect.any(Date) },
     });
+  });
+
+  it('routes a moderation.completed row to the Kafka publisher, not RabbitMQ', async () => {
+    const row = {
+      ...baseRow,
+      id: 'row-kafka',
+      eventType: 'moderation.completed',
+      payload: { postId: 'post-1', verdict: 'approved', categories: [] },
+    };
+    prismaMock.outboxMessage.findMany.mockResolvedValue([row]);
+    kafkaPublisherMock.publish.mockResolvedValue(undefined);
+    prismaMock.outboxMessage.update.mockResolvedValue({ ...row, publishedAt: new Date() });
+
+    await service.poll();
+
+    expect(kafkaPublisherMock.publish).toHaveBeenCalledWith(
+      'moderation-completed-events',
+      expect.objectContaining({ messageId: row.id, eventType: 'moderation.completed' }),
+    );
+    expect(publisherMock.publish).not.toHaveBeenCalled();
   });
 
   it('leaves an unmapped eventType pending and logs instead of silently dropping it', async () => {

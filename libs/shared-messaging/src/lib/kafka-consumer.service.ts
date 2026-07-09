@@ -8,7 +8,7 @@ export interface KafkaConsumeOptions {
   groupId: string;
 }
 
-export type EnvelopeHandler<TPayload = unknown> = (
+export type KafkaEnvelopeHandler<TPayload = unknown> = (
   envelope: MessageEnvelope<TPayload>,
 ) => Promise<void>;
 
@@ -21,7 +21,7 @@ export class KafkaConsumer implements OnModuleDestroy {
 
   async consume<TPayload = unknown>(
     options: KafkaConsumeOptions,
-    handler: EnvelopeHandler<TPayload>,
+    handler: KafkaEnvelopeHandler<TPayload>,
   ): Promise<void> {
     const brokers = this.config.getOrThrow<string>('KAFKA_BROKERS').split(',');
     const clientId = this.config.getOrThrow<string>('KAFKA_CLIENT_ID');
