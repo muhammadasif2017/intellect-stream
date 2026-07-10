@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc",
+    "module": "commonjs",
+    "moduleResolution": "bundler",
+    "types": ["jest", "node"]
+  },
+  "include": [
+    "jest.integration.config.ts",
+    "src/**/*.integration.spec.ts",
+    "src/**/*.d.ts",
+    "../content-service/src/app/auth/internal-auth.types.ts"
+  ]
+}
