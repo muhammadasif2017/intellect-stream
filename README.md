@@ -1,6 +1,17 @@
 # IntellectStream
 
-AI-powered content moderation and analytics platform, built as an event-driven microservice system. A learning project: every architectural decision is recorded and defensible (see [SPEC.md](./SPEC.md) and [docs/decisions/](./docs/decisions/)).
+AI-powered content moderation and analytics platform: users post content, a background pipeline moderates it with an AI model, and results flow into live analytics and real-time notifications.
+
+**What this is:** a from-scratch distributed system, not a tutorial clone. Primary goal is depth over speed — every architectural decision is written down and defensible in a senior-level interview (see [SPEC.md](./SPEC.md) and [docs/decisions/](./docs/decisions/)); the working system is the secondary output.
+
+**What it showcases:**
+- Event-driven microservices with two brokers used for what each is good at — RabbitMQ for work queues (ack/retry/DLQ), Kafka for a replayable event log ([ADR-0001](./docs/decisions/ADR-0001-rabbitmq-for-jobs-kafka-for-events.md))
+- Transactional outbox + polling relay for exactly-once-effect delivery out of Postgres ([ADR-0002](./docs/decisions/ADR-0002-transactional-outbox-with-polling-relay.md))
+- At-least-once consumers made idempotent via dedupe tables, not broker tricks
+- Database-per-service boundaries, services talk only via REST + events ([ADR-0004](./docs/decisions/ADR-0004-database-per-service.md))
+- Shared message envelope/contracts across services ([ADR-0006](./docs/decisions/ADR-0006-message-envelope-and-relay-routing.md))
+- Signed internal auth tokens between gateway and internal services ([ADR-0007](./docs/decisions/ADR-0007-session-auth-with-signed-internal-tokens.md))
+- Redis fixed-window rate limiting ([ADR-0008](./docs/decisions/ADR-0008-fixed-window-redis-rate-limit.md))
 
 **Flow:** post created → moderation job queued (outbox → RabbitMQ) → Cloudflare Workers AI verdict → result event → analytics aggregated (Kafka) → user notified (WebSocket).
 
@@ -43,15 +54,11 @@ Infra UIs: RabbitMQ management at `http://localhost:15672` (admin/admin, dev onl
 
 ## Architecture
 
-- **Commands vs facts:** moderation jobs ride RabbitMQ (work queue: ack/retry/DLQ); domain events ride Kafka (retained, replayable log). [ADR-0001](./docs/decisions/ADR-0001-rabbitmq-for-jobs-kafka-for-events.md)
-- **Consistency:** transactional outbox + polling relay; at-least-once delivery with idempotent consumers. [ADR-0002](./docs/decisions/ADR-0002-transactional-outbox-with-polling-relay.md)
-- **Boundaries:** database per service, integration only via REST + events. [ADR-0004](./docs/decisions/ADR-0004-database-per-service.md)
-- **Contracts:** every message wrapped in a shared envelope (messageId, correlationId, eventType/Version). [ADR-0006](./docs/decisions/ADR-0006-message-envelope-and-relay-routing.md)
-- **Auth:** signed internal tokens carry identity from gateway to services; gateway holds the session. [ADR-0007](./docs/decisions/ADR-0007-session-auth-with-signed-internal-tokens.md)
-- **Rate limiting:** fixed-window counter in Redis, keyed by IP. [ADR-0008](./docs/decisions/ADR-0008-fixed-window-redis-rate-limit.md)
+Patterns above cover the cross-cutting decisions. Service-specific ones:
+
 - **Analytics:** Kafka publisher/topic design and trend persistence model. [ADR-0009](./docs/decisions/ADR-0009-kafka-publisher-and-topic-design.md), [ADR-0010](./docs/decisions/ADR-0010-analytics-persistence.md)
 
-Decision index with trade-offs: [SPEC.md → Decisions Log](./SPEC.md). Interview-ready deep dives: [docs/interview-questions.md](./docs/interview-questions.md).
+Full decision index with trade-offs and rejected alternatives: [SPEC.md → Decisions Log](./SPEC.md). Interview-ready deep dives: [docs/interview-questions.md](./docs/interview-questions.md).
 
 ## Project Status
 
