@@ -108,4 +108,4 @@ Infra UIs: RabbitMQ management at `http://localhost:15672` (admin/admin, dev onl
 
 ## Project Status
 
-Milestones 1–5 complete (infra, workspace, Content Service, API Gateway, AI Processing Service). Milestone 6 in progress (Analytics Service: persistence model and Kafka publisher wired; consumer wiring next). Milestone 7 (Notification Service) and 8 (e2e wiring) not started.
+Milestones 1–7 complete (infra, workspace, Content Service, API Gateway, AI Processing Service, Analytics Service, Notification Service). Milestone 8 (end-to-end wiring + integration tests) not started.
