@@ -34,4 +34,23 @@ describe('ModerationCompletedPayload', () => {
     const errors = await validate(dto);
     expect(errors.some((e) => e.property === 'verdict')).toBe(true);
   });
+
+  it('passes validation without authorId (AI Processing Service does not know it)', async () => {
+    const dto = plainToInstance(ModerationCompletedPayload, {
+      postId: 'p1',
+      verdict: 'approved',
+      categories: [],
+    });
+    expect(await validate(dto)).toHaveLength(0);
+  });
+
+  it('passes validation with authorId set (Content Service relaying to Kafka)', async () => {
+    const dto = plainToInstance(ModerationCompletedPayload, {
+      postId: 'p1',
+      verdict: 'approved',
+      categories: [],
+      authorId: 'u1',
+    });
+    expect(await validate(dto)).toHaveLength(0);
+  });
 });

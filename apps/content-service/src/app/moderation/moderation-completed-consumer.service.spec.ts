@@ -5,7 +5,7 @@ import { ModerationCompletedConsumerService } from './moderation-completed-consu
 
 const prismaMock = {
   processedMessage: { create: jest.fn() },
-  post: { update: jest.fn() },
+  post: { update: jest.fn().mockResolvedValue({ id: 'p1', authorId: 'u1', status: 'approved' }) },
   outboxMessage: { create: jest.fn() },
   $transaction: jest.fn(),
 };
@@ -79,7 +79,7 @@ describe('ModerationCompletedConsumerService', () => {
         correlationId: 'c1',
         eventType: 'moderation.completed',
         source: 'content-service',
-        payload: { postId: 'p1', verdict: 'approved', categories: [] },
+        payload: { postId: 'p1', verdict: 'approved', categories: [], authorId: 'u1' },
       },
     });
   });

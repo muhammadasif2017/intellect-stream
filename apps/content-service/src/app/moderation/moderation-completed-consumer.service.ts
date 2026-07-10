@@ -35,7 +35,7 @@ export class ModerationCompletedConsumerService implements OnModuleInit {
       // same transaction as the state change it guards.
       await this.prisma.$transaction(async (tx) => {
         await tx.processedMessage.create({ data: { messageId: envelope.messageId } });
-        await tx.post.update({
+        const post = await tx.post.update({
           where: { id: payload.postId },
           data: { status: payload.verdict },
         });
@@ -44,6 +44,9 @@ export class ModerationCompletedConsumerService implements OnModuleInit {
         // call from a stateless handler (see BUG-0005). correlationId is
         // carried forward, not re-minted, so the whole chain traces as one
         // request (decision 8).
+        // Decision 22: authorId added here — Content Service is the only
+        // place in the chain that knows it — so Notification Service can
+        // resolve which user's socket to push to.
         await tx.outboxMessage.create({
           data: {
             correlationId: envelope.correlationId,
@@ -53,6 +56,7 @@ export class ModerationCompletedConsumerService implements OnModuleInit {
               postId: payload.postId,
               verdict: payload.verdict,
               categories: payload.categories,
+              authorId: post.authorId,
             } as unknown as Prisma.InputJsonValue,
           },
         });

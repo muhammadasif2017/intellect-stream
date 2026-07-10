@@ -1,4 +1,4 @@
-import { IsArray, IsIn, IsNotEmpty, IsString } from 'class-validator';
+import { IsArray, IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 // eventType values (decision 5: AI Processing Service publishes
 // moderation.completed; Content Service is the sole consumer/writer).
@@ -37,4 +37,13 @@ export class ModerationCompletedPayload {
   @IsArray()
   @IsString({ each: true })
   categories!: string[];
+
+  // Decision 22: only Content Service knows the post's author (AI Processing
+  // Service, the other producer of this same class over RabbitMQ, does not),
+  // so this is optional here and filled in when Content Service relays the
+  // fact onward to Kafka — Notification Service needs it to resolve which
+  // user's socket to push to.
+  @IsOptional()
+  @IsString()
+  authorId?: string;
 }
