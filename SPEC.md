@@ -41,6 +41,8 @@ intellect-stream/
   libs/
     shared-dtos/       → cross-service message contracts
     shared-config/      → env schema, common config module
+    shared-messaging/   → RabbitMQ + Kafka publisher/consumer wrappers
+    shared-redis/       → Redis client module
   docker-compose.yml
   SPEC.md
 ```
@@ -100,11 +102,11 @@ Decisions still to be made, owned by the engineer at the stated milestone. Move 
 - **Notification Service feed + socket registry** (milestone 7): which transport feeds it (Kafka consumer group per instance vs Redis pub/sub) and where userId→socket mapping lives. Interview doc Q13 describes a *proposed* design (Redis pub/sub broadcast) — it is not yet decided.
 
 ## Milestone Plan (high-level, ultra-incremental within each)
-1. Docker Compose infra (Redis, RabbitMQ, Kafka in KRaft mode, Postgres)
-2. Nx workspace scaffold + shared libs
-3. Content Service (Postgres, CRUD, outbox pattern)
-4. API Gateway (Redis rate-limit, routes to Content Service)
-5. AI Processing Service (RabbitMQ consumer, Cloudflare Workers AI call)
-6. Analytics Service (Kafka consumer, topic/partition design decided here)
-7. Notification Service (WebSocket gateway)
-8. End-to-end wiring + integration tests
+1. ✅ Docker Compose infra (Redis, RabbitMQ, Kafka in KRaft mode, Postgres)
+2. ✅ Nx workspace scaffold + shared libs
+3. ✅ Content Service (Postgres, CRUD, outbox pattern)
+4. ✅ API Gateway (Redis rate-limit, routes to Content Service)
+5. ✅ AI Processing Service (RabbitMQ consumer, Cloudflare Workers AI call)
+6. 🚧 Analytics Service (Kafka consumer, topic/partition design decided here) — persistence model + Kafka publisher wired; consumer wiring next
+7. ⬜ Notification Service (WebSocket gateway)
+8. ⬜ End-to-end wiring + integration tests
