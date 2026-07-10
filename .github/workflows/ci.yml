@@ -42,21 +42,24 @@ jobs:
 
       # Prisma clients are generated code, excluded from VCS — build imports
       # them. "generate" never connects to a database, but each service's
-      # prisma.config.ts requires its *_DATABASE_URL to be set, so give both
-      # a placeholder.
-      - run: pnpm db:generate && pnpm db:generate:gateway
+      # prisma.config.ts requires its *_DATABASE_URL to be set, so give all
+      # three a placeholder.
+      - run: pnpm db:generate && pnpm db:generate:gateway && pnpm db:generate:analytics
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
           GATEWAY_DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          ANALYTICS_DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
 
       # Prepend any command with "nx record --" to record its logs to Nx Cloud
       # - run: pnpm exec nx record -- echo Hello World
-      # content-service/api-gateway build/test depend on their prisma-generate
-      # Nx target (uncached, always reruns — see docs/bugs/BUG-0002/BUG-0003),
-      # which needs the same DATABASE_URL placeholders as the step above.
+      # content-service/api-gateway/analytics-service build/test depend on
+      # their prisma-generate Nx target (uncached, always reruns — see
+      # docs/bugs/BUG-0002/BUG-0003), which needs the same DATABASE_URL
+      # placeholders as the step above.
       - run: pnpm exec nx run-many -t lint test build
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
           GATEWAY_DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          ANALYTICS_DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
       # "nx fix-ci" (self-healing CI) requires an Nx Cloud connection —
       # re-add it after running "nx connect" if we adopt Nx Cloud.
