@@ -1,27 +1,37 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
-import { MessageEnvelope, RabbitMqConsumer } from '@intellect-stream/shared-messaging';
+import { KafkaConsumer, MessageEnvelope } from '@intellect-stream/shared-messaging';
 import {
-  MODERATION_COMPLETED_EVENT_TYPE,
-  MODERATION_COMPLETED_QUEUE,
+  MODERATION_COMPLETED_TOPIC,
   ModerationCompletedPayload,
 } from '@intellect-stream/shared-dtos';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '../../generated/prisma/client';
 
+const CONSUMER_GROUP_ID = 'analytics-service';
+
+// No categories on an approved verdict is the common case — still counted,
+// under a sentinel bucket, so verdict trends aren't silently dropped.
+const UNCATEGORIZED = 'none';
+
+function toDateOnly(occurredAt: Date | string): Date {
+  const d = new Date(occurredAt);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
 @Injectable()
-export class ModerationCompletedConsumerService implements OnModuleInit {
-  private readonly logger = new Logger(ModerationCompletedConsumerService.name);
+export class TrendsService implements OnModuleInit {
+  private readonly logger = new Logger(TrendsService.name);
 
   constructor(
-    private readonly consumer: RabbitMqConsumer,
+    private readonly consumer: KafkaConsumer,
     private readonly prisma: PrismaService,
   ) {}
 
   async onModuleInit() {
     await this.consumer.consume<ModerationCompletedPayload>(
-      { queue: MODERATION_COMPLETED_QUEUE },
+      { topic: MODERATION_COMPLETED_TOPIC, groupId: CONSUMER_GROUP_ID },
       (envelope) => this.handle(envelope),
     );
   }
@@ -30,32 +40,22 @@ export class ModerationCompletedConsumerService implements OnModuleInit {
     const payload = plainToInstance(ModerationCompletedPayload, envelope.payload);
     await validateOrReject(payload);
 
+    const date = toDateOnly(envelope.occurredAt);
+    const categories = payload.categories.length > 0 ? payload.categories : [UNCATEGORIZED];
+
     try {
       // Decision 6: DB consumer dedupes via unique constraint, written in the
       // same transaction as the state change it guards.
       await this.prisma.$transaction(async (tx) => {
         await tx.processedMessage.create({ data: { messageId: envelope.messageId } });
-        await tx.post.update({
-          where: { id: payload.postId },
-          data: { status: payload.verdict },
-        });
-        // ADR-0009: relay this fact onward to Kafka via the outbox, in the
-        // same transaction as the state change above — not a second publish
-        // call from a stateless handler (see BUG-0005). correlationId is
-        // carried forward, not re-minted, so the whole chain traces as one
-        // request (decision 8).
-        await tx.outboxMessage.create({
-          data: {
-            correlationId: envelope.correlationId,
-            eventType: MODERATION_COMPLETED_EVENT_TYPE,
-            source: 'content-service',
-            payload: {
-              postId: payload.postId,
-              verdict: payload.verdict,
-              categories: payload.categories,
-            } as unknown as Prisma.InputJsonValue,
-          },
-        });
+
+        for (const category of categories) {
+          await tx.moderationTrend.upsert({
+            where: { date_category_verdict: { date, category, verdict: payload.verdict } },
+            create: { date, category, verdict: payload.verdict, count: 1 },
+            update: { count: { increment: 1 } },
+          });
+        }
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {

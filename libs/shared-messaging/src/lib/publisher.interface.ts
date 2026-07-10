@@ -6,3 +6,8 @@ export interface Publisher {
 }
 
 export const PUBLISHER = Symbol('PUBLISHER');
+
+// ADR-0009: second broker, same interface. Kept as a distinct token (not a
+// second binding of PUBLISHER) so a consumer that needs both — the outbox
+// relay's broker registry — can inject each publisher by its own identity.
+export const KAFKA_PUBLISHER = Symbol('KAFKA_PUBLISHER');

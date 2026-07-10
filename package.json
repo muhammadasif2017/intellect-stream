@@ -8,7 +8,11 @@
     "db:studio": "prisma studio",
     "db:generate:gateway": "prisma generate --config apps/api-gateway/prisma.config.ts",
     "db:migrate:gateway": "prisma migrate dev --config apps/api-gateway/prisma.config.ts",
-    "db:studio:gateway": "prisma studio --config apps/api-gateway/prisma.config.ts"
+    "db:studio:gateway": "prisma studio --config apps/api-gateway/prisma.config.ts",
+    "db:generate:analytics": "prisma generate --config apps/analytics-service/prisma.config.ts",
+    "db:migrate:analytics": "prisma migrate dev --config apps/analytics-service/prisma.config.ts",
+    "db:studio:analytics": "prisma studio --config apps/analytics-service/prisma.config.ts",
+    "kafka:provision-topics": "node scripts/kafka-provision-topics.js"
   },
   "private": true,
   "dependencies": {
@@ -27,6 +31,7 @@
     "class-validator": "^0.15.1",
     "connect-redis": "^9.0.0",
     "express-session": "^1.19.0",
+    "kafkajs": "^2.2.4",
     "pg": "^8.22.0",
     "redis": "^6.1.0",
     "reflect-metadata": "^0.2.0",

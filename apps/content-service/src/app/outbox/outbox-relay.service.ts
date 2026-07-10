@@ -1,8 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import { PUBLISHER, Publisher } from '@intellect-stream/shared-messaging';
+import { KAFKA_PUBLISHER, PUBLISHER, Publisher } from '@intellect-stream/shared-messaging';
 import { PrismaService } from '../prisma/prisma.service';
-import { RELAY_ROUTING } from './relay-routing.config';
+import { Broker, RELAY_ROUTING } from './relay-routing.config';
 
 const POLL_INTERVAL_MS = 5000;
 const BATCH_SIZE = 20;
@@ -10,11 +10,15 @@ const BATCH_SIZE = 20;
 @Injectable()
 export class OutboxRelayService {
   private readonly logger = new Logger(OutboxRelayService.name);
+  private readonly publishers: Record<Broker, Publisher>;
 
   constructor(
     private readonly prisma: PrismaService,
-    @Inject(PUBLISHER) private readonly publisher: Publisher,
-  ) {}
+    @Inject(PUBLISHER) rabbitMqPublisher: Publisher,
+    @Inject(KAFKA_PUBLISHER) kafkaPublisher: Publisher,
+  ) {
+    this.publishers = { rabbitmq: rabbitMqPublisher, kafka: kafkaPublisher };
+  }
 
   @Interval(POLL_INTERVAL_MS)
   async poll() {
@@ -25,8 +29,8 @@ export class OutboxRelayService {
     });
 
     for (const row of pending) {
-      const destination = RELAY_ROUTING[row.eventType];
-      if (!destination) {
+      const route = RELAY_ROUTING[row.eventType];
+      if (!route) {
         this.logger.error(
           `No relay route for eventType "${row.eventType}" (outbox row ${row.id}) — left pending`,
         );
@@ -34,7 +38,7 @@ export class OutboxRelayService {
       }
 
       try {
-        await this.publisher.publish(destination, {
+        await this.publishers[route.broker].publish(route.destination, {
           messageId: row.id,
           correlationId: row.correlationId,
           eventType: row.eventType,
