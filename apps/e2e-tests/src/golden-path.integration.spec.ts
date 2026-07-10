@@ -37,13 +37,22 @@ async function waitFor<T>(
   { timeoutMs = 30000, intervalMs = 250 } = {},
 ): Promise<T> {
   const start = Date.now();
+  let lastError: unknown;
   for (;;) {
-    const result = await fn();
-    if (result) {
-      return result;
+    try {
+      const result = await fn();
+      if (result) {
+        return result;
+      }
+    } catch (err) {
+      // Retry on transient errors (e.g. a connection blip) same as a
+      // not-ready-yet result — only surface it if we still haven't
+      // succeeded once the timeout is actually exceeded.
+      lastError = err;
     }
     if (Date.now() - start > timeoutMs) {
-      throw new Error(`waitFor timed out after ${timeoutMs}ms`);
+      const suffix = lastError ? `; last error: ${String(lastError)}` : '';
+      throw new Error(`waitFor timed out after ${timeoutMs}ms${suffix}`);
     }
     await new Promise((r) => setTimeout(r, intervalMs));
   }
@@ -196,6 +205,12 @@ describe('Golden path: post → moderation → analytics + notification (real in
         where: { messageId: completedOutboxRow.id },
       });
     },
-    45000,
+    // 5 waitFor calls in this test, each defaulting to a 30s internal
+    // timeout — worst case 150s. This must exceed that sum, or Jest can
+    // kill an otherwise still-progressing test with a less useful timeout
+    // error than waitFor's own message (review finding #3). In practice the
+    // whole chain completes in ~10-20s; this ceiling only matters if
+    // something is actually broken.
+    180000,
   );
 });
