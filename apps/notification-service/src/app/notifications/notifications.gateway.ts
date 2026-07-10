@@ -47,9 +47,9 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
     }
   }
 
+  // Auth payload only — never query string, which lands in proxy/access
+  // logs and browser history for the life of the token's TTL.
   private extractToken(client: Socket): string | undefined {
-    const fromAuth = client.handshake.auth?.['token'];
-    const fromQuery = client.handshake.query?.['token'];
-    return (fromAuth ?? fromQuery) as string | undefined;
+    return client.handshake.auth?.['token'] as string | undefined;
   }
 }

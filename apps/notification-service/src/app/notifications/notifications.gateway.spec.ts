@@ -37,13 +37,14 @@ describe('NotificationsGateway', () => {
     expect(socket.disconnect).not.toHaveBeenCalled();
   });
 
-  it('accepts a token passed via query string as a fallback', () => {
-    verifier.verify.mockReturnValue({ userId: 'u1' });
+  it('disconnects and does not register when the token is only in the query string', () => {
     const socket = fakeSocket({ query: { token: 'good-token' } });
 
     gateway.handleConnection(socket);
 
-    expect(registry.register).toHaveBeenCalledWith('u1', socket);
+    expect(verifier.verify).not.toHaveBeenCalled();
+    expect(registry.register).not.toHaveBeenCalled();
+    expect(socket.disconnect).toHaveBeenCalledWith(true);
   });
 
   it('disconnects and does not register when no token is present', () => {
