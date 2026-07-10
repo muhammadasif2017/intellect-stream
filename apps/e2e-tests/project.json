@@ -1,0 +1,16 @@
+{
+  "name": "e2e-tests",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/e2e-tests/src",
+  "projectType": "application",
+  "tags": ["scope:integration"],
+  "targets": {
+    "integration": {
+      "cache": false,
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "jest --config apps/e2e-tests/jest.integration.config.ts --runInBand"
+      }
+    }
+  }
+}
