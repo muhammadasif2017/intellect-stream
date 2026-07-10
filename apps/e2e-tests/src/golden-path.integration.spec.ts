@@ -99,6 +99,19 @@ describe('Golden path: post → moderation → analytics + notification (real in
       const fakeSocket = { emit: jest.fn() };
       notificationApp.get(SocketRegistryService).register(authorId, fakeSocket as never);
 
+      // ModerationTrend is a pure aggregate (date/category/verdict, no
+      // postId) — a prior run can leave a row matching the same
+      // category/verdict this run produces. Baseline the count first so the
+      // assertion below is coupled to *this* run's event, not "a row
+      // happens to exist" (review finding #1).
+      const today = new Date();
+      const trendDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+      const analyticsPrisma = analyticsApp.get(AnalyticsPrismaService);
+      const baselineTrend = await analyticsPrisma.moderationTrend.findUnique({
+        where: { date_category_verdict: { date: trendDate, category: 'spam', verdict: 'rejected' } },
+      });
+      const baselineCount = baselineTrend?.count ?? 0;
+
       // Step 1: create a post — real PostsService, real Postgres transaction
       // (Post + OutboxMessage rows), same as the production REST path minus
       // the gateway/auth layer (already covered by unit/guard tests).
@@ -110,7 +123,7 @@ describe('Golden path: post → moderation → analytics + notification (real in
       // RabbitMQ) picks up the job row and publishes it — wait for the row
       // to be marked published.
       const contentPrisma = contentApp.get(ContentPrismaService);
-      await waitFor(async () => {
+      const jobOutboxRow = await waitFor(async () => {
         const row = await contentPrisma.outboxMessage.findFirst({
           where: { eventType: 'moderation.job', payload: { path: ['postId'], equals: post.id } },
         });
@@ -127,19 +140,28 @@ describe('Golden path: post → moderation → analytics + notification (real in
           p && p.status !== 'pending' ? p : undefined,
         ),
       );
+      const completedOutboxRow = await waitFor(async () => {
+        const row = await contentPrisma.outboxMessage.findFirst({
+          where: {
+            eventType: 'moderation.completed',
+            payload: { path: ['postId'], equals: post.id },
+          },
+        });
+        return row ?? undefined;
+      });
 
       // Step 4: same outbox relay, second poll cycle, publishes the
       // moderation-completed fact to the real Kafka topic.
 
-      // Step 5: analytics-service's real Kafka consumer persists a trend row.
-      const analyticsPrisma = analyticsApp.get(AnalyticsPrismaService);
-      const trend = await waitFor(() =>
-        analyticsPrisma.moderationTrend.findFirst({
-          where: { category: 'spam', verdict: 'rejected' },
-          orderBy: { date: 'desc' },
-        }),
-      );
-      expect(trend?.count).toBeGreaterThanOrEqual(1);
+      // Step 5: analytics-service's real Kafka consumer persists a trend
+      // row — assert it moved by exactly the one increment this run caused.
+      const trend = await waitFor(async () => {
+        const row = await analyticsPrisma.moderationTrend.findUnique({
+          where: { date_category_verdict: { date: trendDate, category: 'spam', verdict: 'rejected' } },
+        });
+        return row && row.count > baselineCount ? row : undefined;
+      });
+      expect(trend.count).toBe(baselineCount + 1);
 
       // Step 6: notification-service's real Kafka consumer resolves the
       // registered socket by authorId and pushes the verdict.
@@ -152,6 +174,27 @@ describe('Golden path: post → moderation → analytics + notification (real in
 
       const finalPost = await contentPrisma.post.findUnique({ where: { id: post.id } });
       expect(finalPost?.status).toBe('rejected');
+
+      // Cleanup: this test's own rows only. Two things intentionally left
+      // behind:
+      // - The ModerationTrend row — a shared aggregate; artificially
+      //   decrementing it post-test is more surprising than an accumulating
+      //   dev-DB count (real production trend data accumulates the same
+      //   way).
+      // - Content Service's own ProcessedMessage row for the RabbitMQ
+      //   moderation.completed hop — its key is the randomUUID() minted
+      //   inside ai-processing-service's ModerationConsumerService, not
+      //   jobOutboxRow.id/completedOutboxRow.id, and this test never
+      //   captures it. One small dedupe-bookkeeping row left per run;
+      //   cheap to ignore, not cheap to correctly capture without spying on
+      //   internal ID generation.
+      await contentPrisma.outboxMessage.deleteMany({
+        where: { id: { in: [jobOutboxRow.id, completedOutboxRow.id] } },
+      });
+      await contentPrisma.post.delete({ where: { id: post.id } });
+      await analyticsPrisma.processedMessage.deleteMany({
+        where: { messageId: completedOutboxRow.id },
+      });
     },
     45000,
   );
