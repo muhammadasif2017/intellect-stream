@@ -9,6 +9,7 @@
   "include": [
     "jest.integration.config.ts",
     "src/**/*.integration.spec.ts",
-    "src/**/*.d.ts"
+    "src/**/*.d.ts",
+    "../content-service/src/app/auth/internal-auth.types.ts"
   ]
 }

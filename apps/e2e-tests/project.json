@@ -9,7 +9,7 @@
       "cache": false,
       "executor": "nx:run-commands",
       "options": {
-        "command": "jest --config apps/e2e-tests/jest.integration.config.ts --runInBand"
+        "command": "jest --config apps/e2e-tests/jest.integration.config.ts --runInBand --forceExit"
       }
     }
   }
