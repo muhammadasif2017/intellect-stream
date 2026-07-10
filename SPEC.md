@@ -113,4 +113,4 @@ None open.
 5. ✅ AI Processing Service (RabbitMQ consumer, Cloudflare Workers AI call)
 6. ✅ Analytics Service (Kafka consumer, topic/partition design decided here)
 7. ✅ Notification Service (WebSocket gateway)
-8. ⬜ End-to-end wiring + integration tests
+8. ✅ End-to-end wiring + integration tests

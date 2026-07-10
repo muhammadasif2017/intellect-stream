@@ -113,4 +113,4 @@ Infra UIs: RabbitMQ management at `http://localhost:15672` (admin/admin, dev onl
 
 ## Project Status
 
-Milestones 1–7 complete (infra, workspace, Content Service, API Gateway, AI Processing Service, Analytics Service, Notification Service). Milestone 8 (end-to-end wiring + integration tests) not started.
+All 8 milestones complete (infra, workspace, Content Service, API Gateway, AI Processing Service, Analytics Service, Notification Service, end-to-end wiring + integration tests). A real golden-path integration test (`apps/e2e-tests`) exercises the full flow — post → moderation → analytics + notification — against live docker-compose infra.
