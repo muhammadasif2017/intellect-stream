@@ -11,11 +11,15 @@ import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { InternalTokenService } from './internal-token.service';
 import { SessionGuard } from './session.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly internalToken: InternalTokenService,
+  ) {}
 
   @Post('register')
   register(@Body() dto: RegisterDto) {
@@ -47,5 +51,15 @@ export class AuthController {
   @UseGuards(SessionGuard)
   me(@Req() req: Request) {
     return this.authService.findById(req.session.userId as string);
+  }
+
+  // Decision 21: client is already session-authenticated here; mint the same
+  // gateway-signed internal token REST calls use (ADR-0007) so it can present
+  // one at the Notification Service WebSocket handshake. Short TTL is fine —
+  // it only has to survive the handshake, not the connection's lifetime.
+  @Get('notifications-ticket')
+  @UseGuards(SessionGuard)
+  notificationsTicket(@Req() req: Request) {
+    return { token: this.internalToken.mint(req.session.userId as string) };
   }
 }
