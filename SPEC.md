@@ -110,6 +110,6 @@ None open.
 3. ✅ Content Service (Postgres, CRUD, outbox pattern)
 4. ✅ API Gateway (Redis rate-limit, routes to Content Service)
 5. ✅ AI Processing Service (RabbitMQ consumer, Cloudflare Workers AI call)
-6. 🚧 Analytics Service (Kafka consumer, topic/partition design decided here) — persistence model + Kafka publisher wired; consumer wiring next
-7. ⬜ Notification Service (WebSocket gateway)
+6. ✅ Analytics Service (Kafka consumer, topic/partition design decided here)
+7. ✅ Notification Service (WebSocket gateway)
 8. ⬜ End-to-end wiring + integration tests

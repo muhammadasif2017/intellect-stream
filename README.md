@@ -43,11 +43,11 @@ Shared libs: `shared-dtos` (message contracts/envelope), `shared-config` (zod en
 
 ```
  client
-   │ REST
+   │ REST (post CRUD, login, "GET /auth/notifications-ticket")
    ▼
 ┌─────────────────┐  session cookie + Redis rate-limit
-│   api-gateway    │  issues a signed internal token per request
-│     :3000        │
+│   api-gateway    │  issues a signed internal token per request —
+│     :3000        │  including a WS ticket for the client to use below
 └────────┬─────────┘
          │ REST (token-authenticated)
          ▼
@@ -79,12 +79,15 @@ Shared libs: `shared-dtos` (message contracts/envelope), `shared-config` (zod en
                  ┌───────────┴────────────┐
                  ▼                        ▼
         ┌──────────────────┐    ┌──────────────────────┐
-        │ analytics-service │    │ notification-service  │
-        │      :3003        │    │       :3004            │
-        │ consumes event,   │    │ consumes event, pushes │
-        │ aggregates trends │    │ to user over WebSocket │
-        │ into own Postgres │    │                         │
-        └──────────────────┘    └──────────────────────┘
+        │ analytics-service │    │ notification-service  │◄── client opens a
+        │      :3003        │    │       :3004            │    WebSocket here
+        │ consumes event,   │    │ verifies the ticket    │    directly (not
+        │ aggregates trends │    │ once at handshake,     │    through the
+        │ into own Postgres │    │ registers the socket   │    gateway),
+        └──────────────────┘    │ in an in-memory         │    presenting the
+                                 │ userId→socket registry, │    ticket minted
+                                 │ pushes matching events  │    above
+                                 └──────────────────────┘
 ```
 
 Design notes:
@@ -92,6 +95,8 @@ Design notes:
 - Every message on the wire is wrapped in a shared envelope (`messageId`, `correlationId`, `eventType`, `eventVersion`), so a consumer can dedupe, trace, and version-check without touching the payload shape.
 - Each service owns its own Postgres database; nothing reaches across a service boundary except REST calls and broker messages — no shared tables, no foreign keys across services.
 - The outbox write and the domain write happen in the same DB transaction, so the relay can never publish an event for a post that failed to save (or vice versa).
+- Notification Service holds no database and no session of its own — it trusts the same gateway-signed token every other internal call uses, verified once at the WebSocket handshake rather than per-request (a WS connection has no natural request/guard lifecycle to re-check on).
+- Each Notification Service instance joins Kafka with its own unique consumer group, so a moderation event reaches every instance (not just one) — necessary because a user's socket only lives on whichever instance they happened to connect to.
 
 ## Commands
 
@@ -108,4 +113,4 @@ Infra UIs: RabbitMQ management at `http://localhost:15672` (admin/admin, dev onl
 
 ## Project Status
 
-Milestones 1–5 complete (infra, workspace, Content Service, API Gateway, AI Processing Service). Milestone 6 in progress (Analytics Service: persistence model and Kafka publisher wired; consumer wiring next). Milestone 7 (Notification Service) and 8 (e2e wiring) not started.
+Milestones 1–7 complete (infra, workspace, Content Service, API Gateway, AI Processing Service, Analytics Service, Notification Service). Milestone 8 (end-to-end wiring + integration tests) not started.
