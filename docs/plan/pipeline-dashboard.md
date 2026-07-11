@@ -139,7 +139,7 @@ expose outside dev" boundary still holds via the flag.
   - Verify: `pnpm nx test dashboard`; manual post against live stack reaches RabbitMQ
   - Files: `apps/dashboard/src/features/trigger/*` (~4 files), `lib/api.ts` (response-header variant), route swap
 
-- [ ] **T14: Close the M2 auth deviation**
+- [x] **T14: Close the M2 auth deviation** (done 2026-07-12)
   - Acceptance: gateway `/dev/*` endpoints require session (SessionGuard) now that the dashboard can log in; CORS exposes `x-correlation-id` to the browser
   - Verify: gateway unit tests; unauthenticated `/api/dev/status` → 401/403
   - Files: `apps/api-gateway/src/**` (~3 files)

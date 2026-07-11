@@ -36,6 +36,9 @@ async function bootstrap() {
     app.enableCors({
       origin: config.get<string>('DASHBOARD_ORIGIN'),
       credentials: true,
+      // CORS hides non-safelisted response headers from browser JS unless
+      // exposed — without this the dashboard can't read the trace handle.
+      exposedHeaders: ['x-correlation-id'],
     });
   }
 

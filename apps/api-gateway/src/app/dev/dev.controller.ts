@@ -1,12 +1,19 @@
-import { Controller, Get, NotFoundException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  UseGuards,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SessionGuard } from '../auth/session.guard';
 import { DevStatusService } from './dev-status.service';
 
-// Dashboard-only introspection. Gated by DEV_ENDPOINTS_ENABLED — disabled
-// deployments 404 as if the route doesn't exist. Session auth intentionally
-// deferred to M3 (the dashboard has no login flow yet); the flag is the
-// boundary until then. See docs/plan/pipeline-dashboard.md, M2 note.
+// Dashboard-only introspection. Double-gated: SessionGuard (the dashboard
+// logs in like any client) and DEV_ENDPOINTS_ENABLED — disabled deployments
+// 404 as if the route doesn't exist. Closes the M2 deferral noted in
+// docs/plan/pipeline-dashboard.md.
 @Controller('dev')
+@UseGuards(SessionGuard)
 export class DevController {
   constructor(
     private readonly status: DevStatusService,
