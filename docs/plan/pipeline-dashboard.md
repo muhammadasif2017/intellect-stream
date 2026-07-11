@@ -83,7 +83,7 @@ Concretely, milestone sequence — each ends with a working, reviewable state:
   - Verify: `pnpm nx test dashboard` (behavioral tests for variants), render on scratch page
   - Files: `apps/dashboard/src/components/*` (~5 files)
 
-- [ ] **T5: Core components — data set**
+- [x] **T5: Core components — data set** (done 2026-07-11)
   - Acceptance: Input, Select (Radix), Table, EmptyState, ErrorState; annotated
   - Verify: tests + scratch page render
   - Files: `apps/dashboard/src/components/*` (~5 files)

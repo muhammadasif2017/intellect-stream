@@ -206,3 +206,61 @@ sizes.
   energy. `aria-hidden` — the *container* announces loading, not ten gray
   boxes.
 - Rule of thumb encoded: skeleton for first paint, spinner for actions.
+
+---
+
+## T5 — Data components: Input, Field, Select, Table, Empty/Error states (2026-07-11)
+
+### Native `<select>`, not Radix (deviation from the task text, deliberate)
+
+The spec approved Radix for dialog/dropdown/tabs — pieces the platform has
+no good primitive for. A filter dropdown isn't that: native `<select>` gives
+keyboard support, screen-reader behavior, and the OS picker on mobile for
+free. The skin trick: `appearance-none` removes platform chrome, an inline
+SVG chevron (absolutely positioned, `pointer-events-none` so clicks fall
+through) replaces it. The *closed* control looks custom; the *open* list
+stays native. Reach for Radix Select only when options need custom rendering
+(colors, icons) — ours are service names and log levels.
+
+### Field: accessibility as a component, not a checklist
+
+Label↔control wiring (`htmlFor`/`id`), error text linked via
+`aria-describedby`, `aria-invalid` on failure — every form gets this wrong
+somewhere when it's left to discipline. `Field` owns it structurally:
+`useId()` generates the pairing, `cloneElement` pushes `id`/`invalid`/
+`aria-describedby` into whatever single control it wraps. Callers *can't*
+forget. Error replaces hint (never both — competing small texts under a
+field read as clutter); error text in `status-failed` red + control border
+flips red, so the eye finds the broken field from anywhere on the page.
+
+### Input/Select share the Button contract
+
+Same `h-9`, same radius, same focus ring, same disabled treatment — a form
+row of [Input][Select][Button] sits on one line like one instrument. This is
+why T4 fixed control height instead of using padding.
+
+### Table: quiet grid, loud data
+
+- Wrapper div owns `overflow-x-auto`: wide log lines scroll inside the
+  card (completing the T3 `min-w-0` story).
+- Only *horizontal* rules (`divide-y`), no vertical lines, no zebra
+  stripes: rows are what you scan in a log/status table; column alignment
+  does the vertical work for free. Zebra earns its place around ~8+ dense
+  columns — not here.
+- Headers `text-xs font-medium text-muted-foreground`: same "labels
+  whisper" pattern as card headers — data is the content, chrome recedes.
+- `align-top` on cells: multi-line cells (a wrapped log message) should
+  hang from the top line, not float mid-row.
+- Row hover tint: eyes track rows across 5+ columns badly; a hover
+  highlight is a reading aid, not decoration.
+
+### Empty and Error are designed states, not fallbacks
+
+- **EmptyState** says what *would* be here and offers the next action
+  ("No logs yet — trigger a post"). A blank panel makes users doubt the
+  app; an empty state makes them do the thing that fills it.
+- **ErrorState** = `role="alert"` (screen readers announce it), human
+  title, technical detail in mono (it's data — copy-pasteable), optional
+  retry. Retry button is `secondary`, not primary: the error panel itself
+  is already loud; two loud things compete. Red-tinted panel reuses the
+  Badge tint pattern (50-bg / 700-800-text).
