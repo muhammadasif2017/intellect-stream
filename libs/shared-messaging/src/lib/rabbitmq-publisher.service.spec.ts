@@ -36,7 +36,7 @@ describe('RabbitMqPublisher', () => {
     expect(connection.createChannel).toHaveBeenCalled();
   });
 
-  it('asserts the queue topology (with its DLQ) and sends a persistent JSON message', async () => {
+  it('asserts the queue topology (DLQ + retry cycle) and sends a persistent JSON message', async () => {
     const message = { messageId: '1', payload: { postId: 'p1' } };
 
     await publisher.publish('moderation.job', message);
@@ -44,11 +44,16 @@ describe('RabbitMqPublisher', () => {
     expect(channel.assertQueue).toHaveBeenNthCalledWith(1, 'moderation.job.dlq', {
       durable: true,
     });
-    expect(channel.assertQueue).toHaveBeenNthCalledWith(2, 'moderation.job', {
+    expect(channel.assertQueue).toHaveBeenNthCalledWith(
+      2,
+      'moderation.job.retry',
+      expect.objectContaining({ durable: true }),
+    );
+    expect(channel.assertQueue).toHaveBeenNthCalledWith(3, 'moderation.job', {
       durable: true,
       arguments: {
         'x-dead-letter-exchange': '',
-        'x-dead-letter-routing-key': 'moderation.job.dlq',
+        'x-dead-letter-routing-key': 'moderation.job.retry',
       },
     });
     expect(channel.sendToQueue).toHaveBeenCalledWith(

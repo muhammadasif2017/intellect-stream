@@ -1,7 +1,7 @@
 # BUG-0007: First consumer failure goes straight to DLQ — no retry
 
 **Found:** 2026-07-11, architecture review of `shared-messaging`
-**Status:** Open
+**Status:** Fixed 2026-07-11 — retry-queue cycle in `queue-topology.ts`, `x-death` check in `rabbitmq-consumer.service.ts` (`MAX_DELIVERIES = 5`, `RETRY_TTL_MS = 15s`); stale dev queues deleted per the deployment note below
 
 ## Symptom (anticipated, not observed)
 

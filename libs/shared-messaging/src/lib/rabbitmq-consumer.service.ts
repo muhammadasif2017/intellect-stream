@@ -2,7 +2,25 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import * as amqp from 'amqplib';
 import { MessageEnvelope } from './message-envelope';
-import { assertQueueTopology } from './queue-topology';
+import {
+  assertQueueTopology,
+  deadLetterQueueName,
+  MAX_DELIVERIES,
+} from './queue-topology';
+
+interface XDeathEntry {
+  queue: string;
+  reason: string;
+  count: number;
+}
+
+// x-death accumulates one entry per (queue, reason) pair; the entry for
+// (main queue, rejected) counts how many retry cycles this message has done.
+function deliveryFailures(msg: amqp.ConsumeMessage, queue: string): number {
+  const deaths = msg.properties.headers?.['x-death'] as XDeathEntry[] | undefined;
+  const entry = deaths?.find((d) => d.queue === queue && d.reason === 'rejected');
+  return entry?.count ?? 0;
+}
 
 export interface ConsumeOptions {
   queue: string;
@@ -43,22 +61,40 @@ export class RabbitMqConsumer implements OnModuleInit, OnModuleDestroy {
       if (!msg) {
         return;
       }
-      await this.handleMessage(channel, msg, handler);
+      await this.handleMessage(channel, options.queue, msg, handler);
     });
   }
 
   private async handleMessage<TPayload>(
     channel: amqp.Channel,
+    queue: string,
     msg: amqp.ConsumeMessage,
     handler: EnvelopeHandler<TPayload>,
   ) {
+    // BUG-0007: a nack now cycles through <queue>.retry (TTL) back here, not
+    // straight to the DLQ. Only a message that has exhausted MAX_DELIVERIES
+    // is routed to the DLQ — transient failures retry, poison terminates.
+    const failures = deliveryFailures(msg, queue);
+    if (failures >= MAX_DELIVERIES) {
+      this.logger.error(
+        `Message exhausted ${MAX_DELIVERIES} deliveries on queue "${queue}", routing to DLQ`,
+      );
+      channel.sendToQueue(deadLetterQueueName(queue), msg.content, {
+        persistent: true,
+        headers: msg.properties.headers,
+      });
+      channel.ack(msg);
+      return;
+    }
+
     try {
       const envelope = JSON.parse(msg.content.toString()) as MessageEnvelope<TPayload>;
       await handler(envelope);
       channel.ack(msg);
     } catch (err) {
       this.logger.error(
-        `Failed to process message on queue "${msg.fields.routingKey}", sending to DLQ`,
+        `Failed to process message on queue "${queue}" ` +
+          `(delivery ${failures + 1}/${MAX_DELIVERIES}), will retry`,
         err as Error,
       );
       channel.nack(msg, false, false);

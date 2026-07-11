@@ -4,11 +4,23 @@ import { MessageEnvelope } from './message-envelope';
 
 jest.mock('amqplib');
 
-function makeMsg(body: unknown): amqp.ConsumeMessage {
+function makeMsg(body: unknown, headers: Record<string, unknown> = {}): amqp.ConsumeMessage {
   return {
     content: Buffer.from(JSON.stringify(body)),
     fields: { routingKey: 'moderation.job' },
+    properties: { headers },
   } as unknown as amqp.ConsumeMessage;
+}
+
+// Shape RabbitMQ produces after `count` rejected deliveries from `queue`
+// have cycled through the retry queue.
+function xDeathHeaders(queue: string, count: number) {
+  return {
+    'x-death': [
+      { queue: `${queue}.retry`, reason: 'expired', count },
+      { queue, reason: 'rejected', count },
+    ],
+  };
 }
 
 describe('RabbitMqConsumer', () => {
@@ -18,6 +30,7 @@ describe('RabbitMqConsumer', () => {
     consume: jest.Mock;
     ack: jest.Mock;
     nack: jest.Mock;
+    sendToQueue: jest.Mock;
   };
   let connection: { createChannel: jest.Mock; close: jest.Mock };
   let configMock: { getOrThrow: jest.Mock };
@@ -30,6 +43,7 @@ describe('RabbitMqConsumer', () => {
       consume: jest.fn().mockResolvedValue(undefined),
       ack: jest.fn(),
       nack: jest.fn(),
+      sendToQueue: jest.fn(),
     };
     connection = {
       createChannel: jest.fn().mockResolvedValue(channel),
@@ -50,17 +64,22 @@ describe('RabbitMqConsumer', () => {
     ).rejects.toThrow('RabbitMQ channel not initialized');
   });
 
-  it('asserts the DLQ and wires the main queue to it automatically', async () => {
+  it('asserts DLQ, retry queue, and main queue wired for the retry cycle', async () => {
     await consumer.consume({ queue: 'moderation.job' }, jest.fn());
 
     expect(channel.assertQueue).toHaveBeenNthCalledWith(1, 'moderation.job.dlq', {
       durable: true,
     });
-    expect(channel.assertQueue).toHaveBeenNthCalledWith(2, 'moderation.job', {
+    expect(channel.assertQueue).toHaveBeenNthCalledWith(
+      2,
+      'moderation.job.retry',
+      expect.objectContaining({ durable: true }),
+    );
+    expect(channel.assertQueue).toHaveBeenNthCalledWith(3, 'moderation.job', {
       durable: true,
       arguments: {
         'x-dead-letter-exchange': '',
-        'x-dead-letter-routing-key': 'moderation.job.dlq',
+        'x-dead-letter-routing-key': 'moderation.job.retry',
       },
     });
   });
@@ -96,7 +115,7 @@ describe('RabbitMqConsumer', () => {
     expect(channel.nack).not.toHaveBeenCalled();
   });
 
-  it('nacks without requeue (straight to DLQ) when the handler throws', async () => {
+  it('nacks without requeue (into the retry cycle) when the handler throws', async () => {
     const handler = jest.fn().mockRejectedValue(new Error('CF Workers AI unreachable'));
     await consumer.consume({ queue: 'moderation.job' }, handler);
     const onMessage = channel.consume.mock.calls[0][1];
@@ -106,18 +125,70 @@ describe('RabbitMqConsumer', () => {
 
     expect(channel.nack).toHaveBeenCalledWith(msg, false, false);
     expect(channel.ack).not.toHaveBeenCalled();
+    expect(channel.sendToQueue).not.toHaveBeenCalled();
   });
 
   it('nacks without requeue when the message body is not valid JSON', async () => {
     const handler = jest.fn();
     await consumer.consume({ queue: 'moderation.job' }, handler);
     const onMessage = channel.consume.mock.calls[0][1];
-    const msg = { content: Buffer.from('not json'), fields: { routingKey: 'moderation.job' } } as unknown as amqp.ConsumeMessage;
+    const msg = {
+      content: Buffer.from('not json'),
+      fields: { routingKey: 'moderation.job' },
+      properties: { headers: {} },
+    } as unknown as amqp.ConsumeMessage;
 
     await onMessage(msg);
 
     expect(handler).not.toHaveBeenCalled();
     expect(channel.nack).toHaveBeenCalledWith(msg, false, false);
+  });
+
+  it('still hands the message to the handler below MAX_DELIVERIES', async () => {
+    const handler = jest.fn().mockResolvedValue(undefined);
+    await consumer.consume({ queue: 'moderation.job' }, handler);
+    const onMessage = channel.consume.mock.calls[0][1];
+    const msg = makeMsg({ eventType: 'moderation.job' }, xDeathHeaders('moderation.job', 4));
+
+    await onMessage(msg);
+
+    expect(handler).toHaveBeenCalled();
+    expect(channel.ack).toHaveBeenCalledWith(msg);
+    expect(channel.sendToQueue).not.toHaveBeenCalled();
+  });
+
+  it('routes an exhausted message to the DLQ and acks, without invoking the handler', async () => {
+    const handler = jest.fn();
+    await consumer.consume({ queue: 'moderation.job' }, handler);
+    const onMessage = channel.consume.mock.calls[0][1];
+    const headers = xDeathHeaders('moderation.job', 5);
+    const msg = makeMsg({ eventType: 'moderation.job' }, headers);
+
+    await onMessage(msg);
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(channel.sendToQueue).toHaveBeenCalledWith('moderation.job.dlq', msg.content, {
+      persistent: true,
+      headers,
+    });
+    expect(channel.ack).toHaveBeenCalledWith(msg);
+    expect(channel.nack).not.toHaveBeenCalled();
+  });
+
+  it('ignores x-death entries from other queues when counting deliveries', async () => {
+    const handler = jest.fn().mockResolvedValue(undefined);
+    await consumer.consume({ queue: 'moderation.job' }, handler);
+    const onMessage = channel.consume.mock.calls[0][1];
+    // rejected count belongs to a different queue — must not trigger DLQ here
+    const msg = makeMsg(
+      { eventType: 'moderation.job' },
+      { 'x-death': [{ queue: 'other.queue', reason: 'rejected', count: 99 }] },
+    );
+
+    await onMessage(msg);
+
+    expect(handler).toHaveBeenCalled();
+    expect(channel.sendToQueue).not.toHaveBeenCalled();
   });
 
   it('ignores a null message (consumer cancellation notification)', async () => {
