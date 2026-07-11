@@ -10,6 +10,8 @@ describe('KafkaConsumer', () => {
     subscribe: jest.Mock;
     run: jest.Mock;
     disconnect: jest.Mock;
+    on: jest.Mock;
+    events: { CRASH: string };
   };
   let configMock: { getOrThrow: jest.Mock };
   let consumer: KafkaConsumer;
@@ -22,6 +24,8 @@ describe('KafkaConsumer', () => {
       subscribe: jest.fn().mockResolvedValue(undefined),
       run: jest.fn().mockResolvedValue(undefined),
       disconnect: jest.fn().mockResolvedValue(undefined),
+      on: jest.fn(),
+      events: { CRASH: 'consumer.crash' },
     };
     (Kafka as unknown as jest.Mock).mockImplementation(() => ({
       consumer: jest.fn().mockReturnValue(kafkaConsumerMock),
@@ -102,5 +106,23 @@ describe('KafkaConsumer', () => {
     await consumer.consume({ topic: 't', groupId: 'g' }, jest.fn());
     await consumer.onModuleDestroy();
     expect(kafkaConsumerMock.disconnect).toHaveBeenCalled();
+  });
+
+  it('logs consumer crashes with their restart disposition', async () => {
+    await consumer.consume({ topic: 't', groupId: 'g' }, jest.fn());
+
+    const crashCall = kafkaConsumerMock.on.mock.calls.find(
+      ([event]) => event === 'consumer.crash',
+    );
+    const crashHandler = crashCall[1] as (arg: {
+      payload: { restart: boolean; error: Error };
+    }) => void;
+
+    crashHandler({ payload: { restart: false, error: new Error('non-retriable') } });
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('restart=false'),
+      expect.any(Error),
+    );
   });
 });

@@ -31,6 +31,17 @@ export class KafkaConsumer implements OnModuleDestroy {
     const kafka = new Kafka({ clientId: this.clientId, brokers });
     this.consumer = kafka.consumer({ groupId: options.groupId });
 
+    // kafkajs restarts itself after retriable crashes; a non-retriable crash
+    // stops the consumer permanently (deliberate — see the handler-error
+    // comment below). Either way it must be loud, not a silent zombie:
+    // restart=false in this log is the "human needed now" signal.
+    this.consumer.on(this.consumer.events.CRASH, ({ payload }) => {
+      this.logger.error(
+        `Kafka consumer crashed on topic "${options.topic}" (restart=${payload.restart})`,
+        payload.error,
+      );
+    });
+
     await this.consumer.connect();
     await this.consumer.subscribe({ topic: options.topic, fromBeginning: false });
 

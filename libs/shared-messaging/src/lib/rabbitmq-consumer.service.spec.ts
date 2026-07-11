@@ -31,12 +31,14 @@ describe('RabbitMqConsumer', () => {
     ack: jest.Mock;
     nack: jest.Mock;
     sendToQueue: jest.Mock;
+    on: jest.Mock;
   };
-  let connection: { createChannel: jest.Mock; close: jest.Mock };
+  let connection: { createChannel: jest.Mock; close: jest.Mock; on: jest.Mock };
   let configMock: { getOrThrow: jest.Mock };
   let consumer: RabbitMqConsumer;
 
   beforeEach(async () => {
+    jest.clearAllMocks();
     channel = {
       assertQueue: jest.fn().mockResolvedValue(undefined),
       prefetch: jest.fn().mockResolvedValue(undefined),
@@ -44,10 +46,12 @@ describe('RabbitMqConsumer', () => {
       ack: jest.fn(),
       nack: jest.fn(),
       sendToQueue: jest.fn(),
+      on: jest.fn(),
     };
     connection = {
       createChannel: jest.fn().mockResolvedValue(channel),
       close: jest.fn().mockResolvedValue(undefined),
+      on: jest.fn(),
     };
     (amqp.connect as jest.Mock).mockResolvedValue(connection);
     configMock = { getOrThrow: jest.fn().mockReturnValue('amqp://localhost') };
@@ -201,5 +205,56 @@ describe('RabbitMqConsumer', () => {
     expect(handler).not.toHaveBeenCalled();
     expect(channel.ack).not.toHaveBeenCalled();
     expect(channel.nack).not.toHaveBeenCalled();
+  });
+
+  describe('reconnect', () => {
+    function fireConnectionClose() {
+      const closeCall = connection.on.mock.calls.find(([event]) => event === 'close');
+      (closeCall[1] as () => void)();
+    }
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('reconnects after the connection closes and replays active consumers', async () => {
+      await consumer.consume({ queue: 'moderation.job' }, jest.fn());
+      expect(channel.consume).toHaveBeenCalledTimes(1);
+
+      fireConnectionClose();
+      await jest.advanceTimersByTimeAsync(5000);
+
+      expect(amqp.connect).toHaveBeenCalledTimes(2);
+      // topology + prefetch + consume replayed on the fresh channel
+      expect(channel.consume).toHaveBeenCalledTimes(2);
+      expect(channel.consume).toHaveBeenLastCalledWith('moderation.job', expect.any(Function));
+    });
+
+    it('keeps retrying when the reconnect itself fails', async () => {
+      (amqp.connect as jest.Mock)
+        .mockRejectedValueOnce(new Error('still down'))
+        .mockResolvedValue(connection);
+
+      fireConnectionClose();
+      await jest.advanceTimersByTimeAsync(5000); // attempt 1 fails
+      await jest.advanceTimersByTimeAsync(5000); // attempt 2 succeeds
+
+      // initial + failed attempt + successful attempt
+      expect(amqp.connect).toHaveBeenCalledTimes(3);
+    });
+
+    it('does not reconnect after module destroy', async () => {
+      await consumer.onModuleDestroy();
+
+      fireConnectionClose();
+      await jest.advanceTimersByTimeAsync(20000);
+
+      expect(amqp.connect).toHaveBeenCalledTimes(1);
+      expect(connection.close).toHaveBeenCalled();
+    });
   });
 });
