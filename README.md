@@ -5,11 +5,13 @@ AI-powered content moderation and analytics platform: users post content, a back
 **What this is:** a from-scratch distributed system, not a tutorial clone. Primary goal is depth over speed — every architectural decision is written down and defensible in a senior-level interview; the working system is the secondary output.
 
 **What it showcases:**
-- Event-driven microservices with two brokers used for what each is good at — RabbitMQ for work queues (ack/retry/DLQ), Kafka for a replayable event log
-- Transactional outbox + polling relay for exactly-once-effect delivery out of Postgres
+- Event-driven microservices with two brokers used for what each is good at — RabbitMQ for work queues (bounded retry via TTL cycle, then DLQ), Kafka for a replayable event log
+- Transactional outbox + polling relay for exactly-once-effect delivery out of Postgres — multi-instance-safe (`FOR UPDATE SKIP LOCKED`) with poison-row quarantine
 - At-least-once consumers made idempotent via dedupe tables, not broker tricks
+- Broker-connection resilience: RabbitMQ reconnect with consumer replay; Kafka crash visibility
 - Database-per-service boundaries, services talk only via REST + events
-- Shared message envelope/contracts across services
+- Shared message envelope/contracts across services, additive-only evolution enforced by frozen-fixture compatibility tests in CI
+- End-to-end correlation IDs: minted at the gateway, returned to the client, carried through outbox → brokers → every consumer's failure logs
 - Signed internal auth tokens between gateway and internal services
 - Redis fixed-window rate limiting
 
@@ -114,3 +116,18 @@ Infra UIs: RabbitMQ management at `http://localhost:15672` (admin/admin, dev onl
 ## Project Status
 
 All 8 milestones complete (infra, workspace, Content Service, API Gateway, AI Processing Service, Analytics Service, Notification Service, end-to-end wiring + integration tests). A real golden-path integration test (`apps/e2e-tests`) exercises the full flow — post → moderation → analytics + notification — against live docker-compose infra.
+
+## Post-review hardening (2026-07-11)
+
+A full architecture review after milestone 8 surfaced six operational gaps — the kind that separate a design exercise from a system that survives production weather. All six closed:
+
+| Gap | Fix | Record |
+|---|---|---|
+| Stuck outbox rows starved the relay batch — pipeline could silently stop publishing | Attempt counter + quarantine threshold on `OutboxMessage`; quarantined rows stay in-table for manual replay | [BUG-0006](./docs/bugs/BUG-0006-outbox-relay-head-of-line-blocking.md) |
+| First consumer failure went straight to DLQ — "retry/DLQ" had no retry | TTL retry-queue cycle (`x-death`-counted, 5 deliveries), DLQ becomes poison-only | [BUG-0007](./docs/bugs/BUG-0007-no-retry-before-dlq.md) |
+| Broker connection drop left consumers as silent zombies | RabbitMQ reconnect loop with consumer replay; Kafka `CRASH`-event logging | SPEC decision 26 |
+| Outbox relay double-published under >1 instance | Batch claim via `FOR UPDATE SKIP LOCKED` inside a transaction | SPEC decision 25 |
+| Additive-only contract rule was honor-system | Frozen wire-payload fixtures fail CI on breaking DTO changes; `eventVersion` checked at all four consumer boundaries | [ADR-0012](./docs/decisions/ADR-0012-contract-compatibility-enforcement.md) |
+| correlationId propagated but nothing consumed it | Minted at the gateway, echoed to the client, present in every messaging failure log; `LOG_FORMAT=json` for structured output | [ADR-0013](./docs/decisions/ADR-0013-observability-first-pass.md) |
+
+Deliberately deferred (new infra, ask-first per SPEC): metrics endpoints + scrape stack, Kafka consumer-lag tracking, OpenTelemetry tracing — see ADR-0013's deferred section.
