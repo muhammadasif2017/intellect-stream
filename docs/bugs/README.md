@@ -12,3 +12,4 @@ Nx/Prisma monorepos and are non-obvious from the code alone.
 | [BUG-0004](./BUG-0004-docker-containers-auto-paused.md) | `P1001: Can't reach database server` despite containers "running" | Docker Desktop auto-paused containers |
 | [BUG-0005](./BUG-0005-dual-write-hazard-in-analytics-publish-design.md) | First-draft Analytics publish design dual-writes RabbitMQ+Kafka with no shared transaction | Ad-hoc second publish bypassing the outbox |
 | [BUG-0006](./BUG-0006-outbox-relay-head-of-line-blocking.md) | Stuck outbox rows starve the relay batch — pipeline silently stops publishing | No poison-row handling in the relay's work selector |
+| [BUG-0007](./BUG-0007-no-retry-before-dlq.md) | First consumer failure dead-letters immediately — "retry/DLQ" has no retry | `nack(requeue: false)` conflates transient and poison failures |
