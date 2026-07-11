@@ -410,3 +410,40 @@ Sidebar bottom, `ghost` variant, next to the truncated email: identity +
 exit belong together, and logout must never compete visually with real
 actions (it's the least-used button in the app). Logout also clears the
 whole query cache — cached status/posts belong to the ended session.
+
+---
+
+## T13 — Trigger page (2026-07-12)
+
+### Two-column: cause on the left, effect on the right
+
+Form and "Fired this session" sit side by side (`xl:grid-cols-2`,
+`items-start` so the short card doesn't stretch): fire → the result appears
+next to your cursor's mental position, not below the fold. On narrow
+screens they stack, form first — cause before effect.
+
+### The correlationId is the product of this page
+
+The gateway returns it as a response *header*, so `apiFetch` grew a
+`apiFetchWithHeaders` variant instead of every caller re-implementing the
+fetch. In the history row the id renders `font-mono`, truncated with the
+full value one Copy away — IDs are for machines; the human needs *recency*
+(newest first, timestamp) and the *route onward* (Trace link). Preview text
+capped at 80 chars: the row identifies the post, it doesn't display it.
+
+### Feedback in place, not in a toast
+
+- Copy button flips its own label ("Copy" → "Copied", 1.5s): feedback at
+  the point of action. A toast for a clipboard write is a cannon for a fly.
+- Submit errors surface in the Content field's error slot — same wiring as
+  login (T12), same red, zero new patterns.
+- On success the form clears (ready for the next test shot) and the new
+  row appears at the top of the list — the state change *is* the success
+  message; no "Post created!" banner needed.
+
+### Textarea joins the control contract
+
+Same border/focus/invalid skin as Input; `resize-y` only — vertical growth
+is useful, horizontal drag breaks the grid. `maxLength` mirrors the
+backend's 10k cap (defense in depth: the DTO still enforces it server-side;
+the attribute just saves a round-trip).

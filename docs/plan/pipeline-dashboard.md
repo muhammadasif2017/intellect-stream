@@ -134,7 +134,7 @@ expose outside dev" boundary still holds via the flag.
   - Verify: `pnpm nx test dashboard`; manual login against live stack
   - Files: `apps/dashboard/src/features/auth/*` (~5 files), layout edit
 
-- [ ] **T13: Trigger page**
+- [x] **T13: Trigger page** (done 2026-07-12)
   - Acceptance: create-post form (content, ≤10000 chars) posting through the real gateway path; success shows the returned `x-correlation-id` with copy button + link toward trace; session-local history of fired triggers; loading/error states; annotated
   - Verify: `pnpm nx test dashboard`; manual post against live stack reaches RabbitMQ
   - Files: `apps/dashboard/src/features/trigger/*` (~4 files), `lib/api.ts` (response-header variant), route swap

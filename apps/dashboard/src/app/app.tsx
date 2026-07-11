@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { AuthGate } from '../features/auth/auth-gate';
 import { StatusPage } from '../features/status/status-page';
+import { TriggerPage } from '../features/trigger/trigger-page';
 import { KitchenSink } from './kitchen-sink';
 import { Layout } from './layout';
 import { PagePlaceholder } from './page-placeholder';
@@ -20,16 +21,7 @@ function AppRoutes() {
       <Route element={<Layout />}>
         <Route index element={<Navigate to="/status" replace />} />
         <Route path="/status" element={<StatusPage />} />
-        <Route
-          path="/trigger"
-          element={
-            <PagePlaceholder
-              title="Trigger"
-              description="Log in and send a test post through the real gateway path."
-              milestone="M3"
-            />
-          }
-        />
+        <Route path="/trigger" element={<TriggerPage />} />
         <Route
           path="/logs"
           element={

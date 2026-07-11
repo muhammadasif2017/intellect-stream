@@ -14,10 +14,12 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T>(
+/* Variant for callers that need response headers too — the gateway returns
+ * the request's correlationId as an `x-correlation-id` header (ADR-0013). */
+export async function apiFetchWithHeaders<T>(
   path: string,
   init?: RequestInit,
-): Promise<T> {
+): Promise<{ data: T; headers: Headers }> {
   const response = await fetch(`${baseUrl}${path}`, {
     /* Session cookie auth (gateway) — every request carries credentials. */
     credentials: 'include',
@@ -42,8 +44,17 @@ export async function apiFetch<T>(
     throw new ApiError(response.status, message, body);
   }
 
-  if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
+  if (response.status === 204) {
+    return { data: undefined as T, headers: response.headers };
+  }
+  return { data: (await response.json()) as T, headers: response.headers };
+}
+
+export async function apiFetch<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  return (await apiFetchWithHeaders<T>(path, init)).data;
 }
 
 export { baseUrl as gatewayBaseUrl };
