@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { INTERNAL_TOKEN_AUDIENCE } from '@intellect-stream/shared-dtos';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -60,6 +61,11 @@ export class AuthController {
   @Get('notifications-ticket')
   @UseGuards(SessionGuard)
   notificationsTicket(@Req() req: Request) {
-    return { token: this.internalToken.mint(req.session.userId as string) };
+    return {
+      token: this.internalToken.mint(
+        req.session.userId as string,
+        INTERNAL_TOKEN_AUDIENCE.NOTIFICATIONS_WS,
+      ),
+    };
   }
 }
