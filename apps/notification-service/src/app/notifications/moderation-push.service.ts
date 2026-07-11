@@ -4,8 +4,10 @@ import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
 import { KafkaConsumer, MessageEnvelope } from '@intellect-stream/shared-messaging';
 import {
+  assertSupportedEventVersion,
   MODERATION_COMPLETED_TOPIC,
   ModerationCompletedPayload,
+  UnsupportedEventVersionError,
 } from '@intellect-stream/shared-dtos';
 import { SocketRegistryService } from '../registry/socket-registry.service';
 
@@ -32,6 +34,18 @@ export class ModerationPushService implements OnModuleInit {
   }
 
   private async handle(envelope: MessageEnvelope<ModerationCompletedPayload>) {
+    // ADR-0012: permanent mismatch — log and skip rather than blocking the
+    // partition (same policy as TrendsService; no Kafka DLQ in this design).
+    try {
+      assertSupportedEventVersion(envelope.eventType, envelope.eventVersion);
+    } catch (err) {
+      if (err instanceof UnsupportedEventVersionError) {
+        this.logger.error(`${err.message} (message ${envelope.messageId}), skipping`);
+        return;
+      }
+      throw err;
+    }
+
     const payload = plainToInstance(ModerationCompletedPayload, envelope.payload);
     await validateOrReject(payload);
 

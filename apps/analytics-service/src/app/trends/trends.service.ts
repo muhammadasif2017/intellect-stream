@@ -3,8 +3,10 @@ import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
 import { KafkaConsumer, MessageEnvelope } from '@intellect-stream/shared-messaging';
 import {
+  assertSupportedEventVersion,
   MODERATION_COMPLETED_TOPIC,
   ModerationCompletedPayload,
+  UnsupportedEventVersionError,
 } from '@intellect-stream/shared-dtos';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '../../generated/prisma/client';
@@ -37,6 +39,20 @@ export class TrendsService implements OnModuleInit {
   }
 
   private async handle(envelope: MessageEnvelope<ModerationCompletedPayload>) {
+    // ADR-0012: a version from the future is permanent for this consumer —
+    // rethrowing would make kafkajs retry forever and block the partition
+    // behind one unreadable event. Log loudly and skip, same treatment as
+    // malformed JSON in KafkaConsumer.
+    try {
+      assertSupportedEventVersion(envelope.eventType, envelope.eventVersion);
+    } catch (err) {
+      if (err instanceof UnsupportedEventVersionError) {
+        this.logger.error(`${err.message} (message ${envelope.messageId}), skipping`);
+        return;
+      }
+      throw err;
+    }
+
     const payload = plainToInstance(ModerationCompletedPayload, envelope.payload);
     await validateOrReject(payload);
 

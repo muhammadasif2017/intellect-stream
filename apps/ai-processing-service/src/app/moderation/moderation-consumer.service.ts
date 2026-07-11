@@ -10,6 +10,7 @@ import {
   RabbitMqConsumer,
 } from '@intellect-stream/shared-messaging';
 import {
+  assertSupportedEventVersion,
   MODERATION_COMPLETED_EVENT_TYPE,
   MODERATION_COMPLETED_QUEUE,
   MODERATION_JOB_QUEUE,
@@ -43,6 +44,10 @@ export class ModerationConsumerService implements OnModuleInit {
   }
 
   private async handle(envelope: MessageEnvelope<ModerationJobPayload>) {
+    // ADR-0012: checked before the dedupe claim so a version mismatch never
+    // holds a claim it can't complete. Throws → retry cycle → DLQ (BUG-0007).
+    assertSupportedEventVersion(envelope.eventType, envelope.eventVersion);
+
     const dedupeKey = `moderation:processed:${envelope.messageId}`;
 
     // Decision 6: stateless consumer dedupes via Redis SETNX. Claimed here,

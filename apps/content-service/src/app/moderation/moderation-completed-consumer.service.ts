@@ -3,6 +3,7 @@ import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
 import { MessageEnvelope, RabbitMqConsumer } from '@intellect-stream/shared-messaging';
 import {
+  assertSupportedEventVersion,
   MODERATION_COMPLETED_EVENT_TYPE,
   MODERATION_COMPLETED_QUEUE,
   ModerationCompletedPayload,
@@ -27,6 +28,9 @@ export class ModerationCompletedConsumerService implements OnModuleInit {
   }
 
   private async handle(envelope: MessageEnvelope<ModerationCompletedPayload>) {
+    // ADR-0012: version check at the consumer boundary, same as the payload
+    // validation below. Throws → retry cycle → DLQ (BUG-0007).
+    assertSupportedEventVersion(envelope.eventType, envelope.eventVersion);
     const payload = plainToInstance(ModerationCompletedPayload, envelope.payload);
     await validateOrReject(payload);
 
