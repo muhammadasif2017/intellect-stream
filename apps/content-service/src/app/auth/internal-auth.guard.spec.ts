@@ -54,7 +54,10 @@ describe('InternalAuthGuard', () => {
     const context = contextWithAuthHeader('Bearer good-token');
 
     expect(guard.canActivate(context)).toBe(true);
-    expect(jwtMock.verify).toHaveBeenCalledWith('good-token', { secret: 'test-secret' });
+    expect(jwtMock.verify).toHaveBeenCalledWith('good-token', {
+      secret: 'test-secret',
+      audience: 'internal-api',
+    });
     expect(context.switchToHttp().getRequest().userId).toBe('u1');
   });
 });

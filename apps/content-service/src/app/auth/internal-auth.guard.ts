@@ -2,9 +2,12 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
+import { INTERNAL_TOKEN_AUDIENCE } from '@intellect-stream/shared-dtos';
 
 // ADR-0007: verify the gateway-minted token independently — this service
 // does not trust the caller's network position, only a valid signature.
+// `aud` is pinned to API so a WS ticket (minted for the notification
+// gateway) can't be replayed here as a REST bearer token.
 @Injectable()
 export class InternalAuthGuard implements CanActivate {
   constructor(
@@ -24,6 +27,7 @@ export class InternalAuthGuard implements CanActivate {
     try {
       const payload = this.jwt.verify<{ userId: string }>(token, {
         secret: this.config.getOrThrow<string>('INTERNAL_JWT_SECRET'),
+        audience: INTERNAL_TOKEN_AUDIENCE.API,
       });
       request.userId = payload.userId;
       return true;
