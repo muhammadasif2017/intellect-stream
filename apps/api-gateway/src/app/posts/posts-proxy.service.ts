@@ -1,9 +1,11 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'crypto';
 
 export interface ProxyResponse {
   status: number;
   body: unknown;
+  correlationId: string;
 }
 
 // Decision 4: Gateway -> Content Service transport is plain HTTP. This is a
@@ -24,6 +26,11 @@ export class PostsProxyService {
     body?: unknown,
   ): Promise<ProxyResponse> {
     const baseUrl = this.config.getOrThrow<string>('CONTENT_SERVICE_URL');
+    // Decision 8 / ADR-0013: the chain's correlationId is minted here, at the
+    // edge — the gateway is the first thing a request touches, so every log
+    // and message downstream (content → outbox → brokers → consumers) traces
+    // back to one id the client also received.
+    const correlationId = randomUUID();
 
     let res: Response;
     try {
@@ -32,19 +39,23 @@ export class PostsProxyService {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
+          'x-correlation-id': correlationId,
         },
         body: body !== undefined ? JSON.stringify(body) : undefined,
       });
     } catch (err) {
-      this.logger.error(`content-service unreachable: ${method} ${path}`, err as Error);
+      this.logger.error(
+        `content-service unreachable: ${method} ${path} (correlation ${correlationId})`,
+        err as Error,
+      );
       throw new InternalServerErrorException('Content service unavailable');
     }
 
     if (res.status === 204) {
-      return { status: res.status, body: undefined };
+      return { status: res.status, body: undefined, correlationId };
     }
 
     const responseBody = await res.json().catch(() => undefined);
-    return { status: res.status, body: responseBody };
+    return { status: res.status, body: responseBody, correlationId };
   }
 }

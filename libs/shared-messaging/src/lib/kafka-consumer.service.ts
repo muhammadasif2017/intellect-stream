@@ -66,7 +66,7 @@ export class KafkaConsumer implements OnModuleDestroy {
           return;
         }
 
-        // Handler errors are deliberately NOT caught here — they propagate
+        // Handler errors are deliberately NOT swallowed here — they propagate
         // to kafkajs, which retries rather than auto-committing the offset.
         // That's what makes at-least-once + dedupe (decision 6,
         // ProcessedMessage) actually hold: a transient failure (DB blip)
@@ -77,7 +77,19 @@ export class KafkaConsumer implements OnModuleDestroy {
         // kafkajs's retry policy and crashes the consumer — restart is a
         // manual/process-manager concern, same "log + alert, manual replay"
         // spirit as decision 10's RabbitMQ DLQ.
-        await handler(envelope);
+        try {
+          await handler(envelope);
+        } catch (err) {
+          // ADR-0013: log with the chain's ids before rethrowing — kafkajs's
+          // own retry logging doesn't know the envelope exists.
+          this.logger.error(
+            `Handler failed for message ${envelope.messageId} ` +
+              `(correlation ${envelope.correlationId}) on topic "${options.topic}" — ` +
+              `kafkajs will retry`,
+            err as Error,
+          );
+          throw err;
+        }
       },
     });
   }

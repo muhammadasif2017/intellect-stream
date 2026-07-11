@@ -81,14 +81,19 @@ describe('KafkaConsumer', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it('propagates handler errors instead of swallowing them, so kafkajs retries and does not auto-commit', async () => {
+  it('propagates handler errors (so kafkajs retries) after logging them with the chain ids', async () => {
     const handler = jest.fn().mockRejectedValue(new Error('boom'));
     await consumer.consume({ topic: 't', groupId: 'g' }, handler);
 
+    const envelope = { messageId: 'm1', correlationId: 'c1' };
     await expect(
-      getEachMessage()({ message: { value: Buffer.from(JSON.stringify({})) } }),
+      getEachMessage()({ message: { value: Buffer.from(JSON.stringify(envelope)) } }),
     ).rejects.toThrow('boom');
-    expect(errorSpy).not.toHaveBeenCalled();
+    // ADR-0013: failure logged with messageId + correlationId before rethrow
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('message m1 (correlation c1)'),
+      expect.any(Error),
+    );
   });
 
   it('logs and skips on invalid JSON instead of throwing', async () => {

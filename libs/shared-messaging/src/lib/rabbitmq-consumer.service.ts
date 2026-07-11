@@ -170,7 +170,8 @@ export class RabbitMqConsumer implements OnModuleInit, OnModuleDestroy {
     const failures = deliveryFailures(msg, queue);
     if (failures >= MAX_DELIVERIES) {
       this.logger.error(
-        `Message exhausted ${MAX_DELIVERIES} deliveries on queue "${queue}", routing to DLQ`,
+        `Message exhausted ${MAX_DELIVERIES} deliveries on queue "${queue}"` +
+          `${this.describeIds(msg)}, routing to DLQ`,
       );
       channel.sendToQueue(deadLetterQueueName(queue), msg.content, {
         persistent: true,
@@ -180,17 +181,43 @@ export class RabbitMqConsumer implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
+    let envelope: MessageEnvelope<TPayload>;
     try {
-      const envelope = JSON.parse(msg.content.toString()) as MessageEnvelope<TPayload>;
-      await handler(envelope);
-      channel.ack(msg);
+      envelope = JSON.parse(msg.content.toString()) as MessageEnvelope<TPayload>;
     } catch (err) {
       this.logger.error(
-        `Failed to process message on queue "${queue}" ` +
+        `Malformed message on queue "${queue}" ` +
           `(delivery ${failures + 1}/${MAX_DELIVERIES}), will retry`,
         err as Error,
       );
       channel.nack(msg, false, false);
+      return;
+    }
+
+    try {
+      await handler(envelope);
+      channel.ack(msg);
+    } catch (err) {
+      // ADR-0013: messageId + correlationId on every failure log — the ids
+      // are what let a stuck message be traced back through the whole chain.
+      this.logger.error(
+        `Failed to process message ${envelope.messageId} ` +
+          `(correlation ${envelope.correlationId}) on queue "${queue}" ` +
+          `(delivery ${failures + 1}/${MAX_DELIVERIES}), will retry`,
+        err as Error,
+      );
+      channel.nack(msg, false, false);
+    }
+  }
+
+  // Best-effort id extraction for logs on paths where the body may be
+  // unparseable (the DLQ route also carries malformed messages).
+  private describeIds(msg: amqp.ConsumeMessage): string {
+    try {
+      const envelope = JSON.parse(msg.content.toString()) as MessageEnvelope;
+      return ` (message ${envelope.messageId}, correlation ${envelope.correlationId})`;
+    } catch {
+      return ' (unparseable body)';
     }
   }
 

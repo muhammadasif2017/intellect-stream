@@ -24,7 +24,14 @@ export class PostsController {
 
   @Post()
   create(@Body() dto: CreatePostDto, @Req() req: Request) {
-    return this.postsService.create(req.userId as string, dto);
+    // ADR-0013: the gateway minted this request's correlationId at the edge;
+    // carry it into the outbox so the whole async chain traces as one request.
+    const correlationId = req.headers['x-correlation-id'];
+    return this.postsService.create(
+      req.userId as string,
+      dto,
+      typeof correlationId === 'string' ? correlationId : undefined,
+    );
   }
 
   @Get()

@@ -30,10 +30,21 @@ export class PostsController {
     return this.internalToken.mint(req.session.userId as string);
   }
 
+  // The correlationId header on every response gives the client a trace
+  // handle for support/debugging — the same id appears in every log line
+  // and message this request produced anywhere in the system (ADR-0013).
+  private send(res: Response, proxied: { status: number; body: unknown; correlationId: string }) {
+    res.setHeader('x-correlation-id', proxied.correlationId);
+    if (proxied.body === undefined) {
+      res.status(proxied.status).send();
+    } else {
+      res.status(proxied.status).json(proxied.body);
+    }
+  }
+
   @Post()
   async create(@Body() dto: CreatePostDto, @Req() req: Request, @Res() res: Response) {
-    const { status, body } = await this.proxy.forward('POST', '/posts', this.token(req), dto);
-    res.status(status).json(body);
+    this.send(res, await this.proxy.forward('POST', '/posts', this.token(req), dto));
   }
 
   @Get()
@@ -48,14 +59,12 @@ export class PostsController {
     if (take) qs.set('take', take);
     const path = qs.toString() ? `/posts?${qs.toString()}` : '/posts';
 
-    const { status, body } = await this.proxy.forward('GET', path, this.token(req));
-    res.status(status).json(body);
+    this.send(res, await this.proxy.forward('GET', path, this.token(req)));
   }
 
   @Get(':id')
   async findOne(@Param('id') id: string, @Req() req: Request, @Res() res: Response) {
-    const { status, body } = await this.proxy.forward('GET', `/posts/${id}`, this.token(req));
-    res.status(status).json(body);
+    this.send(res, await this.proxy.forward('GET', `/posts/${id}`, this.token(req)));
   }
 
   @Patch(':id')
@@ -65,22 +74,11 @@ export class PostsController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    const { status, body } = await this.proxy.forward(
-      'PATCH',
-      `/posts/${id}`,
-      this.token(req),
-      dto,
-    );
-    res.status(status).json(body);
+    this.send(res, await this.proxy.forward('PATCH', `/posts/${id}`, this.token(req), dto));
   }
 
   @Delete(':id')
   async remove(@Param('id') id: string, @Req() req: Request, @Res() res: Response) {
-    const { status, body } = await this.proxy.forward('DELETE', `/posts/${id}`, this.token(req));
-    if (body === undefined) {
-      res.status(status).send();
-    } else {
-      res.status(status).json(body);
-    }
+    this.send(res, await this.proxy.forward('DELETE', `/posts/${id}`, this.token(req)));
   }
 }

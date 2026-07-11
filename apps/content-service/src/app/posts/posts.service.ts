@@ -11,14 +11,16 @@ import { Prisma } from "../../generated/prisma/client";
 export class PostsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(authorId: string, dto: CreatePostDto) {
+  create(authorId: string, dto: CreatePostDto, correlationId?: string) {
     return this.prisma.$transaction(async (tx) => {
       const post = await tx.post.create({ data: { ...dto, authorId } });
 
       const payload: ModerationJobPayload = { postId: post.id, content: post.content };
       await tx.outboxMessage.create({
         data: {
-          correlationId: randomUUID(),
+          // Gateway-minted when the request came through the edge (ADR-0013);
+          // minted here only for callers that bypass the gateway (tests, curl).
+          correlationId: correlationId ?? randomUUID(),
           eventType: MODERATION_JOB_EVENT_TYPE,
           source: 'content-service',
           // Prisma's Json input type wants an index signature a class instance
