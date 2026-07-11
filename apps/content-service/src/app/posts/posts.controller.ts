@@ -40,12 +40,12 @@ export class PostsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdatePostDto) {
-    return this.postsService.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdatePostDto, @Req() req: Request) {
+    return this.postsService.update(id, req.userId as string, dto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.postsService.remove(id);
+  remove(@Param('id') id: string, @Req() req: Request) {
+    return this.postsService.remove(id, req.userId as string);
   }
 }

@@ -39,25 +39,14 @@ export class PostsService {
     return this.prisma.post.findUnique({ where: { id } });
   }
 
-  async update(id: string, dto: UpdatePostDto) {
-    try {
-      return await this.prisma.post.update({ where: { id }, data: dto });
-    } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
-        throw new NotFoundException();
-      }
-      throw e;
-    }
+  async update(id: string, authorId: string, dto: UpdatePostDto) {
+    const { count } = await this.prisma.post.updateMany({ where: { id, authorId }, data: dto });
+    if (count === 0) throw new NotFoundException();
+    return this.prisma.post.findUnique({ where: { id } });
   }
 
-  async remove(id: string) {
-    try {
-      return await this.prisma.post.delete({ where: { id } });
-    } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
-        throw new NotFoundException();
-      }
-      throw e;
-    }
+  async remove(id: string, authorId: string) {
+    const { count } = await this.prisma.post.deleteMany({ where: { id, authorId } });
+    if (count === 0) throw new NotFoundException();
   }
 }
