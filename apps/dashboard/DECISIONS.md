@@ -366,3 +366,47 @@ paint and loaded paint have identical geometry — no reflow jump.
 a monitor that silently polls looks static and untrustworthy; a spinner on
 every poll is noise. Quiet refresh + stated cadence + `tabular-nums` keeping
 the update motionless is the middle path.
+
+---
+
+## T12 — Auth gate (2026-07-12)
+
+### One gate at the app boundary, not per-page guards
+
+The whole dashboard is session-scoped (dev endpoints require it), so auth
+is a single `AuthGate` above the router — no per-route guard to forget on
+the next page. Three distinct states, deliberately distinct visuals:
+**checking** (centered spinner — never flash the login form at someone who
+IS logged in), **anonymous** (login screen), **gateway unreachable**
+(ErrorState — "the backend is down" and "you're logged out" are different
+facts and must not share a screen).
+
+### 401 is data, not an error
+
+`useMe` catches `ApiError(401)` and returns `null`. If 401 flowed through
+the error channel, the query layer would treat "anonymous" as a failure —
+retries, error UI, noise. Encoding it as a value makes the three-state
+gate a plain `if` chain. General lesson: expected domain states don't
+belong in the exception path.
+
+### Login screen craft notes
+
+- Centered single card, `max-w-sm`: a two-field form gets a narrow column —
+  full-width inputs on a wide screen look broken.
+- Brand text sits *above* the card, quiet: this is an internal tool's door,
+  not a marketing page.
+- Server error surfaces through the password `Field`'s error slot — the
+  message appears where the user's eye already is, and the field turns red
+  via the same wiring every other form uses (T5).
+- Register chains an automatic login: "create account" should land you
+  *inside* the app, not on a second form. The mode toggle is one line of
+  text, because login vs. register is a fork, not two features.
+- Submit `Button className="w-full"`: on a narrow card the full-width
+  button doubles as the form's visual footer.
+
+### Logout placement
+
+Sidebar bottom, `ghost` variant, next to the truncated email: identity +
+exit belong together, and logout must never compete visually with real
+actions (it's the least-used button in the app). Logout also clears the
+whole query cache — cached status/posts belong to the ended session.

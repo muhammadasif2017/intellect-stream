@@ -4,10 +4,24 @@ import { MemoryRouter } from 'react-router-dom';
 
 import App from './app';
 
-/* Real pages fetch on mount — park them in a permanent pending state so
- * shell tests stay about the shell. */
+/* The auth gate must resolve (logged in) for the shell to render; every
+ * other request parks in a permanent pending state so shell tests stay
+ * about the shell. */
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(() => new Promise(() => undefined)));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url: RequestInfo | URL) => {
+      if (String(url).includes('/api/auth/me')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ id: 'u1', email: 'dev@local' }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      return new Promise<Response>(() => undefined);
+    }),
+  );
 });
 
 afterEach(() => {
@@ -27,15 +41,17 @@ function renderAt(path: string) {
   );
 }
 
+/* All queries are findBy* — the auth gate resolves the session before the
+ * shell renders, so first paint is async in every test. */
 describe('App shell', () => {
-  it('redirects the root route to /status', () => {
+  it('redirects the root route to /status', async () => {
     renderAt('/');
-    expect(screen.getByRole('heading', { name: 'Status' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Status' })).toBeTruthy();
   });
 
-  it('renders a nav link for every surface', () => {
+  it('renders a nav link for every surface', async () => {
     renderAt('/');
-    const nav = screen.getByRole('navigation', { name: 'Primary' });
+    const nav = await screen.findByRole('navigation', { name: 'Primary' });
     for (const label of ['Status', 'Trigger', 'Logs', 'Trace', 'Analytics']) {
       expect(within(nav).getByRole('link', { name: label })).toBeTruthy();
     }
@@ -46,18 +62,24 @@ describe('App shell', () => {
     ['/logs', 'Logs'],
     ['/trace', 'Trace'],
     ['/analytics', 'Analytics'],
-  ])('renders the %s page', (path, heading) => {
+  ])('renders the %s page', async (path, heading) => {
     renderAt(path);
-    expect(screen.getByRole('heading', { name: heading })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: heading }),
+    ).toBeTruthy();
   });
 
-  it('renders the kitchen sink from the development nav', () => {
+  it('renders the kitchen sink from the development nav', async () => {
     renderAt('/kitchen-sink');
-    expect(screen.getByRole('heading', { name: 'Kitchen sink' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: 'Kitchen sink' }),
+    ).toBeTruthy();
   });
 
-  it('renders a not-found page for unknown routes', () => {
+  it('renders a not-found page for unknown routes', async () => {
     renderAt('/nope');
-    expect(screen.getByRole('heading', { name: 'Not found' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: 'Not found' }),
+    ).toBeTruthy();
   });
 });

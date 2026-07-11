@@ -127,6 +127,23 @@ expose outside dev" boundary still holds via the flag.
   - Verify: `pnpm nx test dashboard`; visual pass against live stack
   - Files: `apps/dashboard/src/features/status/*` + route swap (~4 files)
 
+## M3 Tasks (approved for implementation)
+
+- [x] **T12: Auth gate** (done 2026-07-12)
+  - Acceptance: dashboard requires login before showing any surface — layout-level gate using `GET /auth/me` (401 = anonymous, renders login/register screen built from Field/Input/Button); logout in sidebar; annotated
+  - Verify: `pnpm nx test dashboard`; manual login against live stack
+  - Files: `apps/dashboard/src/features/auth/*` (~5 files), layout edit
+
+- [ ] **T13: Trigger page**
+  - Acceptance: create-post form (content, ≤10000 chars) posting through the real gateway path; success shows the returned `x-correlation-id` with copy button + link toward trace; session-local history of fired triggers; loading/error states; annotated
+  - Verify: `pnpm nx test dashboard`; manual post against live stack reaches RabbitMQ
+  - Files: `apps/dashboard/src/features/trigger/*` (~4 files), `lib/api.ts` (response-header variant), route swap
+
+- [ ] **T14: Close the M2 auth deviation**
+  - Acceptance: gateway `/dev/*` endpoints require session (SessionGuard) now that the dashboard can log in; CORS exposes `x-correlation-id` to the browser
+  - Verify: gateway unit tests; unauthenticated `/api/dev/status` → 401/403
+  - Files: `apps/api-gateway/src/**` (~3 files)
+
 ## Verification checkpoints
 
 - After M1: `pnpm nx serve dashboard` renders shell + components; lint/test green.

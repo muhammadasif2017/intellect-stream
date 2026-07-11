@@ -1,11 +1,20 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
+import { AuthGate } from '../features/auth/auth-gate';
 import { StatusPage } from '../features/status/status-page';
 import { KitchenSink } from './kitchen-sink';
 import { Layout } from './layout';
 import { PagePlaceholder } from './page-placeholder';
 
 export function App() {
+  return (
+    <AuthGate>
+      <AppRoutes />
+    </AuthGate>
+  );
+}
+
+function AppRoutes() {
   return (
     <Routes>
       <Route element={<Layout />}>

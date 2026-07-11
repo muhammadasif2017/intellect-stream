@@ -1,5 +1,8 @@
 import { NavLink, Outlet } from 'react-router-dom';
 
+import { Button } from '../components';
+import { useLogout, useMe } from '../features/auth/use-auth';
+
 const navItems = [
   { to: '/status', label: 'Status' },
   { to: '/trigger', label: 'Trigger' },
@@ -9,6 +12,9 @@ const navItems = [
 ];
 
 export function Layout() {
+  const { data: user } = useMe();
+  const logout = useLogout();
+
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans text-foreground md:flex-row">
       <aside className="border-b border-border bg-surface md:sticky md:top-0 md:flex md:h-screen md:w-56 md:shrink-0 md:flex-col md:border-b-0 md:border-r">
@@ -40,9 +46,25 @@ export function Layout() {
             ))}
           </ul>
         </nav>
+        <div className="hidden items-center justify-between gap-2 border-t border-border px-4 py-2.5 md:mt-auto md:flex">
+          <p
+            className="truncate text-xs text-muted-foreground"
+            title={user?.email}
+          >
+            {user?.email}
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            isLoading={logout.isPending}
+            onClick={() => logout.mutate()}
+          >
+            Log out
+          </Button>
+        </div>
         <nav
           aria-label="Development"
-          className="hidden border-t border-border md:mt-auto md:block"
+          className="hidden border-t border-border md:block"
         >
           <div className="p-3">
             <NavLink
