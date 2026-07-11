@@ -321,3 +321,48 @@ Not styling, but the decisions that make the styled states *reachable*:
   verifies a gateway-minted ticket at handshake (ADR-0007), so the caller
   must fetch the ticket *first* — the factory makes the wrong order
   unrepresentable by not connecting on creation.
+
+---
+
+## T11 — Status page (2026-07-12)
+
+### Form before color (dataviz method)
+
+Each data block got the *form* its job demands, not a chart by default:
+- Outbox counts = **stat tiles** (a handful of headline numbers → KPI row,
+  never a grouped bar chart). Tile contract: sentence-case label, semibold
+  value, optional hint underneath.
+- Service health = **badge grid** (state, not magnitude — status colors).
+- Queue depths = **table** (per-row identity + three numbers; a bar chart
+  of five queues would just be a slower table).
+
+### tabular-nums on every refreshing number
+
+The page repaints every 5s. Proportional digits change width when values
+change (a `1` is narrower than a `4`), which makes tiles and table columns
+wiggle on every poll. `tabular-nums` gives fixed-width digits — the number
+updates, nothing moves. Any surface that re-renders numbers in place wants
+this.
+
+### Status color = state, never decoration
+
+`quarantined` turns red *only when > 0* — a red zero would cry wolf, and
+the tile also gains a "needs manual replay" hint (color never alone). Same
+rule in the queue table: `.dlq` totals go red only when non-zero. Everything
+healthy renders quiet; the page is designed so problems are the only loud
+thing on it.
+
+### Partial failure is layout, not an exception
+
+The snapshot's sections fail independently (a dead RabbitMQ must not blank
+the service grid), so each card handles its own `ok: false` with an inline
+ErrorState. The only full-page error is the gateway itself being
+unreachable. Skeletons mirror the loaded layout card-for-card, so first
+paint and loaded paint have identical geometry — no reflow jump.
+
+### Polling honesty
+
+`refetchInterval: 5000` with the caption saying so ("Refreshes every 5s") —
+a monitor that silently polls looks static and untrustworthy; a spinner on
+every poll is noise. Quiet refresh + stated cadence + `tabular-nums` keeping
+the update motionless is the middle path.

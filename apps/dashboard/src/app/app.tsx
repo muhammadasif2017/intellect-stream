@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
+import { StatusPage } from '../features/status/status-page';
 import { KitchenSink } from './kitchen-sink';
 import { Layout } from './layout';
 import { PagePlaceholder } from './page-placeholder';
@@ -9,16 +10,7 @@ export function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Navigate to="/status" replace />} />
-        <Route
-          path="/status"
-          element={
-            <PagePlaceholder
-              title="Status"
-              description="Service health, outbox backlog, queue and DLQ depths."
-              milestone="M2"
-            />
-          }
-        />
+        <Route path="/status" element={<StatusPage />} />
         <Route
           path="/trigger"
           element={

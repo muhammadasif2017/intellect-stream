@@ -122,7 +122,7 @@ expose outside dev" boundary still holds via the flag.
   - Verify: unit test with mocked HTTP; manual curl against live stack
   - Files: `apps/api-gateway/src/**` (~4 files)
 
-- [ ] **T11: Status page**
+- [x] **T11: Status page** (done 2026-07-12; live visual pass pending stack run)
   - Acceptance: dashboard Status surface renders service health grid, outbox backlog, queue/DLQ depths from `/dev/status`; auto-refresh; skeleton on first load, ErrorState with retry on failure; annotated in DECISIONS.md
   - Verify: `pnpm nx test dashboard`; visual pass against live stack
   - Files: `apps/dashboard/src/features/status/*` + route swap (~4 files)

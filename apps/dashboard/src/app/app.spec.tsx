@@ -1,13 +1,29 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 import App from './app';
 
+/* Real pages fetch on mount — park them in a permanent pending state so
+ * shell tests stay about the shell. */
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn(() => new Promise(() => undefined)));
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 function renderAt(path: string) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <App />
-    </MemoryRouter>,
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[path]}>
+        <App />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
