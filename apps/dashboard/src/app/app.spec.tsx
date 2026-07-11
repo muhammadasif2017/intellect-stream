@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 
 import App from './app';
@@ -13,14 +13,14 @@ describe('App', () => {
     expect(baseElement).toBeTruthy();
   });
 
-  it('should have a greeting as the title', () => {
-    const { getAllByText } = render(
+  it('should render the dashboard title', () => {
+    render(
       <BrowserRouter>
         <App />
       </BrowserRouter>,
     );
     expect(
-      getAllByText(new RegExp('Welcome dashboard', 'gi')).length > 0,
+      screen.getByRole('heading', { name: /IntellectStream Dashboard/i }),
     ).toBeTruthy();
   });
 });

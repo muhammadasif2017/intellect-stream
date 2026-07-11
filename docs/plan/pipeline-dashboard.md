@@ -68,7 +68,7 @@ Concretely, milestone sequence — each ends with a working, reviewable state:
   - Verify: `pnpm nx serve dashboard`, `pnpm nx test dashboard`, `pnpm nx lint dashboard`
   - Files: generator output + `package.json`/`nx.json` (plugin add)
 
-- [ ] **T2: Tailwind v4 + design tokens**
+- [x] **T2: Tailwind v4 + design tokens** (done 2026-07-11)
   - Acceptance: Tailwind v4 wired (CSS-first `@theme`); tokens defined for color palette, spacing scale, type scale, radii; each token choice annotated in `apps/dashboard/DECISIONS.md`
   - Verify: token classes render on the default page; serve + build green
   - Files: `apps/dashboard/src/styles/*`, `vite.config.ts`, `DECISIONS.md`

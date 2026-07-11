@@ -1,1 +1,32 @@
-/* You can add global styles to this file, and also import other style files */
+@import 'tailwindcss';
+
+/*
+ * Design tokens. Semantic names only — components say `bg-surface`,
+ * never `bg-white`, so a future dark theme is a token swap, not a hunt.
+ * Reasoning for every choice: apps/dashboard/DECISIONS.md
+ */
+@theme {
+  /* Typography */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Menlo, Consolas,
+    monospace;
+
+  /* Surfaces & text (light theme; values from Tailwind slate) */
+  --color-background: #f8fafc; /* slate-50  — page canvas */
+  --color-surface: #ffffff; /*             — cards, panels */
+  --color-border: #e2e8f0; /* slate-200 — hairlines, dividers */
+  --color-foreground: #0f172a; /* slate-900 — primary text */
+  --color-muted-foreground: #64748b; /* slate-500 — secondary text */
+
+  /* Single accent (indigo) */
+  --color-primary: #4f46e5; /* indigo-600 — actions, links, focus */
+  --color-primary-strong: #4338ca; /* indigo-700 — hover/active */
+  --color-primary-foreground: #ffffff; /* text on primary */
+
+  /* Pipeline status hues — the one place the dashboard uses loud color */
+  --color-status-pending: #f59e0b; /* amber-500  */
+  --color-status-processing: #3b82f6; /* blue-500   */
+  --color-status-delivered: #10b981; /* emerald-500 */
+  --color-status-failed: #ef4444; /* red-500    */
+}
