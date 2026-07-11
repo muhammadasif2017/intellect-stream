@@ -27,6 +27,10 @@ model Post {
   updatedAt   DateTime         @updatedAt
 }
 
+// BUG-0006: attempts/lastAttemptAt let the relay quarantine rows that can
+// never publish (unroutable eventType, poison payload) instead of letting
+// them occupy batch slots forever. Quarantined rows stay in-table for manual
+// replay (reset attempts) — decision 14's never-silent-drop guarantee holds.
 model OutboxMessage {
   id           String    @id @default(uuid())
   correlationId String
@@ -36,6 +40,10 @@ model OutboxMessage {
   occurredAt   DateTime  @default(now())
   payload      Json
   publishedAt  DateTime?
+  attempts     Int       @default(0)
+  lastAttemptAt DateTime?
+
+  @@index([publishedAt, occurredAt])
 }
 
 // Decision 6: DB consumers dedupe via a unique constraint on the message id.

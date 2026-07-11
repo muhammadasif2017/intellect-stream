@@ -1,7 +1,7 @@
 # BUG-0006: Outbox relay head-of-line blocking on permanently-pending rows
 
 **Found:** 2026-07-11, architecture review of the outbox relay
-**Status:** Open — latent defect, not yet observed in dev (requires stuck rows to accumulate)
+**Status:** Fixed 2026-07-11 — `attempts`/`lastAttemptAt` columns + quarantine filter in the relay batch query (migration `20260711104910_outbox_relay_quarantine`), `MAX_ATTEMPTS = 10`
 
 ## Symptom (anticipated, not observed)
 
@@ -64,7 +64,8 @@ there, still loud — while restoring liveness for everything behind it.
 
 Optional hardening (not required for the fix): per-row backoff via
 `lastAttemptAt`, so transient broker outages don't burn through `attempts`
-in a few polls.
+in a few polls. The column ships with the fix; the backoff logic is deferred
+until a transient outage actually demonstrates the need.
 
 ## Prevention
 

@@ -28,6 +28,8 @@ const baseRow = {
   occurredAt: new Date('2026-07-08T00:00:00.000Z'),
   payload: { postId: 'post-1', content: 'hi' },
   publishedAt: null,
+  attempts: 0,
+  lastAttemptAt: null,
 };
 
 describe('OutboxRelayService', () => {
@@ -60,11 +62,11 @@ describe('OutboxRelayService', () => {
     expect(prismaMock.outboxMessage.update).not.toHaveBeenCalled();
   });
 
-  it('queries pending rows oldest-first, batch of 20', async () => {
+  it('queries pending rows oldest-first, batch of 20, excluding quarantined rows', async () => {
     prismaMock.outboxMessage.findMany.mockResolvedValue([]);
     await service.poll();
     expect(prismaMock.outboxMessage.findMany).toHaveBeenCalledWith({
-      where: { publishedAt: null },
+      where: { publishedAt: null, attempts: { lt: 10 } },
       take: 20,
       orderBy: { occurredAt: 'asc' },
     });
@@ -112,30 +114,38 @@ describe('OutboxRelayService', () => {
     expect(publisherMock.publish).not.toHaveBeenCalled();
   });
 
-  it('leaves an unmapped eventType pending and logs instead of silently dropping it', async () => {
+  it('leaves an unmapped eventType unpublished, logs, and records the attempt', async () => {
     const row = { ...baseRow, id: 'row-2', eventType: 'unknown.event' };
     prismaMock.outboxMessage.findMany.mockResolvedValue([row]);
+    prismaMock.outboxMessage.update.mockResolvedValue({ ...row, attempts: 1 });
 
     await service.poll();
 
     expect(publisherMock.publish).not.toHaveBeenCalled();
-    expect(prismaMock.outboxMessage.update).not.toHaveBeenCalled();
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('unknown.event'));
+    // BUG-0006: the failure is counted so the row eventually stops occupying batch slots
+    expect(prismaMock.outboxMessage.update).toHaveBeenCalledWith({
+      where: { id: row.id },
+      data: { attempts: 1, lastAttemptAt: expect.any(Date) },
+    });
   });
 
-  it('leaves the row pending for retry when publish fails, and does not stop the batch', async () => {
+  it('records the attempt when publish fails, and does not stop the batch', async () => {
     const failing = { ...baseRow, id: 'row-fail' };
     const ok = { ...baseRow, id: 'row-ok' };
     prismaMock.outboxMessage.findMany.mockResolvedValue([failing, ok]);
     publisherMock.publish
       .mockRejectedValueOnce(new Error('connection refused'))
       .mockResolvedValueOnce(undefined);
-    prismaMock.outboxMessage.update.mockResolvedValue({ ...ok, publishedAt: new Date() });
+    prismaMock.outboxMessage.update.mockResolvedValue({});
 
     await service.poll();
 
     expect(publisherMock.publish).toHaveBeenCalledTimes(2);
-    expect(prismaMock.outboxMessage.update).toHaveBeenCalledTimes(1);
+    expect(prismaMock.outboxMessage.update).toHaveBeenCalledWith({
+      where: { id: failing.id },
+      data: { attempts: 1, lastAttemptAt: expect.any(Date) },
+    });
     expect(prismaMock.outboxMessage.update).toHaveBeenCalledWith({
       where: { id: ok.id },
       data: { publishedAt: expect.any(Date) },
@@ -144,5 +154,51 @@ describe('OutboxRelayService', () => {
       expect.stringContaining('row-fail'),
       expect.any(Error),
     );
+  });
+
+  it('logs quarantine when a failure crosses MAX_ATTEMPTS', async () => {
+    const row = { ...baseRow, id: 'row-poison', attempts: 9 };
+    prismaMock.outboxMessage.findMany.mockResolvedValue([row]);
+    publisherMock.publish.mockRejectedValue(new Error('broker rejected payload'));
+    prismaMock.outboxMessage.update.mockResolvedValue({ ...row, attempts: 10 });
+
+    await service.poll();
+
+    expect(prismaMock.outboxMessage.update).toHaveBeenCalledWith({
+      where: { id: row.id },
+      data: { attempts: 10, lastAttemptAt: expect.any(Date) },
+    });
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('quarantined after 10'));
+  });
+
+  it('does not log quarantine below MAX_ATTEMPTS', async () => {
+    const row = { ...baseRow, id: 'row-retry', attempts: 3 };
+    prismaMock.outboxMessage.findMany.mockResolvedValue([row]);
+    publisherMock.publish.mockRejectedValue(new Error('transient'));
+    prismaMock.outboxMessage.update.mockResolvedValue({ ...row, attempts: 4 });
+
+    await service.poll();
+
+    expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining('quarantined'));
+  });
+
+  it('continues the batch when attempt bookkeeping itself fails', async () => {
+    const failing = { ...baseRow, id: 'row-fail' };
+    const ok = { ...baseRow, id: 'row-ok' };
+    prismaMock.outboxMessage.findMany.mockResolvedValue([failing, ok]);
+    publisherMock.publish
+      .mockRejectedValueOnce(new Error('connection refused'))
+      .mockResolvedValueOnce(undefined);
+    prismaMock.outboxMessage.update
+      .mockRejectedValueOnce(new Error('db unavailable')) // attempts write for row-fail
+      .mockResolvedValueOnce({}); // publishedAt write for row-ok
+
+    await service.poll();
+
+    expect(publisherMock.publish).toHaveBeenCalledTimes(2);
+    expect(prismaMock.outboxMessage.update).toHaveBeenCalledWith({
+      where: { id: ok.id },
+      data: { publishedAt: expect.any(Date) },
+    });
   });
 });
