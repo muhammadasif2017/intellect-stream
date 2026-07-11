@@ -1,6 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PostsService } from './posts.service';
 
@@ -9,8 +8,8 @@ const prismaMock = {
     create: jest.fn(),
     findMany: jest.fn(),
     findUnique: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
+    updateMany: jest.fn(),
+    deleteMany: jest.fn(),
   },
   outboxMessage: {
     create: jest.fn(),
@@ -18,11 +17,6 @@ const prismaMock = {
   $transaction: jest.fn(),
 };
 prismaMock.$transaction.mockImplementation((cb: (tx: typeof prismaMock) => unknown) => cb(prismaMock));
-
-const notFoundError = new Prisma.PrismaClientKnownRequestError('Record not found', {
-  code: 'P2025',
-  clientVersion: '7.8.0',
-});
 
 describe('PostsService', () => {
   let service: PostsService;
@@ -67,25 +61,33 @@ describe('PostsService', () => {
     await expect(service.findOne('missing')).resolves.toBeNull();
   });
 
-  it('update() returns the updated row on success', async () => {
-    const updated = { id: 'p1', content: 'new' };
-    prismaMock.post.update.mockResolvedValue(updated);
-    await expect(service.update('p1', { content: 'new' })).resolves.toEqual(updated);
+  it('update() scopes the write to id + authorId and returns the updated row on success', async () => {
+    const updated = { id: 'p1', authorId: 'u1', content: 'new' };
+    prismaMock.post.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.post.findUnique.mockResolvedValue(updated);
+
+    await expect(service.update('p1', 'u1', { content: 'new' })).resolves.toEqual(updated);
+    expect(prismaMock.post.updateMany).toHaveBeenCalledWith({
+      where: { id: 'p1', authorId: 'u1' },
+      data: { content: 'new' },
+    });
   });
 
-  it('update() maps Prisma P2025 to NotFoundException', async () => {
-    prismaMock.post.update.mockRejectedValue(notFoundError);
-    await expect(service.update('missing', { content: 'new' })).rejects.toThrow(NotFoundException);
+  it('update() throws NotFoundException when the post does not exist or is not owned by the caller', async () => {
+    prismaMock.post.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.update('p1', 'someone-else', { content: 'new' })).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
-  it('remove() maps Prisma P2025 to NotFoundException', async () => {
-    prismaMock.post.delete.mockRejectedValue(notFoundError);
-    await expect(service.remove('missing')).rejects.toThrow(NotFoundException);
+  it('remove() scopes the delete to id + authorId', async () => {
+    prismaMock.post.deleteMany.mockResolvedValue({ count: 1 });
+    await service.remove('p1', 'u1');
+    expect(prismaMock.post.deleteMany).toHaveBeenCalledWith({ where: { id: 'p1', authorId: 'u1' } });
   });
 
-  it('update() rethrows non-P2025 errors unchanged', async () => {
-    const other = new Error('connection lost');
-    prismaMock.post.update.mockRejectedValue(other);
-    await expect(service.update('p1', { content: 'x' })).rejects.toThrow('connection lost');
+  it('remove() throws NotFoundException when the post does not exist or is not owned by the caller', async () => {
+    prismaMock.post.deleteMany.mockResolvedValue({ count: 0 });
+    await expect(service.remove('p1', 'someone-else')).rejects.toThrow(NotFoundException);
   });
 });
