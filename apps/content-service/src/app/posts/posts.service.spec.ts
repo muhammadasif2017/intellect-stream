@@ -8,6 +8,7 @@ const prismaMock = {
     create: jest.fn(),
     findMany: jest.fn(),
     findUnique: jest.fn(),
+    findFirst: jest.fn(),
     updateMany: jest.fn(),
     deleteMany: jest.fn(),
   },
@@ -50,15 +51,22 @@ describe('PostsService', () => {
     expect(result).toEqual(expected);
   });
 
-  it('findAll() passes skip/take through to prisma', async () => {
+  it('findAll() passes skip/take through to prisma, scoped to approved posts', async () => {
     prismaMock.post.findMany.mockResolvedValue([]);
     await service.findAll({ skip: 10, take: 5 });
-    expect(prismaMock.post.findMany).toHaveBeenCalledWith({ skip: 10, take: 5 });
+    expect(prismaMock.post.findMany).toHaveBeenCalledWith({
+      where: { status: 'approved' },
+      skip: 10,
+      take: 5,
+    });
   });
 
-  it('findOne() returns null when prisma finds nothing (no throw)', async () => {
-    prismaMock.post.findUnique.mockResolvedValue(null);
+  it('findOne() only matches approved posts and returns null when nothing matches (no throw)', async () => {
+    prismaMock.post.findFirst.mockResolvedValue(null);
     await expect(service.findOne('missing')).resolves.toBeNull();
+    expect(prismaMock.post.findFirst).toHaveBeenCalledWith({
+      where: { id: 'missing', status: 'approved' },
+    });
   });
 
   it('update() scopes the write to id + authorId and returns the updated row on success', async () => {
