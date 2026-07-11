@@ -4,13 +4,10 @@ import { KAFKA_PUBLISHER, PUBLISHER, Publisher } from '@intellect-stream/shared-
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '../../generated/prisma/client';
 import { Broker, RELAY_ROUTING } from './relay-routing.config';
+import { OUTBOX_MAX_ATTEMPTS as MAX_ATTEMPTS } from './outbox.constants';
 
 const POLL_INTERVAL_MS = 5000;
 const BATCH_SIZE = 20;
-// BUG-0006: rows that fail this many times stop competing for batch slots.
-// They stay in the table (decision 14: never silent-drop) — manual replay is
-// resetting attempts, same log-and-alert posture as decision 10's DLQ.
-const MAX_ATTEMPTS = 10;
 // The claim transaction holds row locks across broker publishes, so it needs
 // more than Prisma's 5s default before it aborts mid-batch.
 const CLAIM_TX_TIMEOUT_MS = 30_000;

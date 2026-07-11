@@ -28,6 +28,17 @@ async function bootstrap() {
   const redisClient = app.get<RedisClientType>(REDIS_CLIENT);
 
   const isProduction = config.get<string>('NODE_ENV') === 'production';
+
+  // The pipeline dashboard (vite, :4200) is a cross-origin client using the
+  // session cookie — CORS with credentials, pinned to one origin, and only
+  // when dev endpoints are on. Production keeps same-origin behavior.
+  if (config.get<boolean>('DEV_ENDPOINTS_ENABLED')) {
+    app.enableCors({
+      origin: config.get<string>('DASHBOARD_ORIGIN'),
+      credentials: true,
+    });
+  }
+
   app.use(
     session({
       store: new RedisStore({ client: redisClient, prefix: 'sess:' }),

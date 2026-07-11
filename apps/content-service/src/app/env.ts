@@ -10,6 +10,11 @@ export const contentServiceEnvSchema = baseEnvSchema.extend({
   // ADR-0009: outbox relay now also publishes to Kafka. clientId itself is
   // not env-configured — see KafkaMessagingModule.forRoot() in outbox.module.ts.
   KAFKA_BROKERS: z.string().min(1, 'KAFKA_BROKERS is required'),
+  // Pipeline-dashboard introspection endpoints — off unless a dev opts in.
+  DEV_ENDPOINTS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 });
 
 export type ContentServiceEnv = z.infer<typeof contentServiceEnvSchema>;

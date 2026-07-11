@@ -9,4 +9,13 @@ export class AppController {
   getData() {
     return this.appService.getData();
   }
+
+  @Get('health')
+  getHealth() {
+    return {
+      status: 'ok' as const,
+      service: 'api-gateway',
+      uptime: Math.round(process.uptime()),
+    };
+  }
 }

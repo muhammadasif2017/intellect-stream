@@ -100,6 +100,33 @@ Concretely, milestone sequence — each ends with a working, reviewable state:
 
 Deferred within M1: dark mode (tokens built theme-ready; toggle lands as separate task later).
 
+## M2 Tasks (approved for implementation)
+
+Deviation from the original plan note: `/dev/*` gateway endpoints are guarded
+by a dev-mode env flag only in M2 — session auth on them lands with M3, when
+the dashboard gains a login flow (chicken-and-egg otherwise). The "never
+expose outside dev" boundary still holds via the flag.
+
+- [x] **T8: `/health` endpoint on all 5 services** (done 2026-07-11; live curl pending next stack run)
+  - Acceptance: `GET /health` on gateway, content, ai-processing, analytics, notification returns `{ status: 'ok', service, uptime }`; follows each app's existing controller conventions
+  - Verify: unit test per controller; manual curl against running stack
+  - Files: 1 controller + module wiring per service (~10 small files)
+
+- [x] **T9: content-service outbox stats endpoint** (done 2026-07-11)
+  - Acceptance: `GET /dev/outbox-stats` returns pending/quarantined/total counts from the outbox table; guarded by internal token (same guard as other internal calls) + dev flag
+  - Verify: unit test with mocked Prisma; manual curl
+  - Files: `apps/content-service/src/**` (~3 files)
+
+- [x] **T10: gateway `/dev/status` aggregator** (done 2026-07-11)
+  - Acceptance: fans out to 5× `/health`, content `/dev/outbox-stats`, RabbitMQ management API queue depths; returns one JSON snapshot; per-target failures reported inline (one dead service must not 500 the whole snapshot); dev-flag guarded; CORS allows dashboard origin with credentials
+  - Verify: unit test with mocked HTTP; manual curl against live stack
+  - Files: `apps/api-gateway/src/**` (~4 files)
+
+- [ ] **T11: Status page**
+  - Acceptance: dashboard Status surface renders service health grid, outbox backlog, queue/DLQ depths from `/dev/status`; auto-refresh; skeleton on first load, ErrorState with retry on failure; annotated in DECISIONS.md
+  - Verify: `pnpm nx test dashboard`; visual pass against live stack
+  - Files: `apps/dashboard/src/features/status/*` + route swap (~4 files)
+
 ## Verification checkpoints
 
 - After M1: `pnpm nx serve dashboard` renders shell + components; lint/test green.

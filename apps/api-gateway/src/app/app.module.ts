@@ -8,6 +8,7 @@ import { validateEnv } from './env';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { PostsModule } from './posts/posts.module';
+import { DevModule } from './dev/dev.module';
 import { RateLimitGuard } from './rate-limit/rate-limit.guard';
 
 @Module({
@@ -20,6 +21,7 @@ import { RateLimitGuard } from './rate-limit/rate-limit.guard';
     PrismaModule,
     AuthModule,
     PostsModule,
+    DevModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: RateLimitGuard }],
