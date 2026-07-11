@@ -288,3 +288,36 @@ why T4 fixed control height instead of using padding.
   failure message) not lorem ipsum: realistic content lengths expose
   truncation/wrapping problems fake text hides — the long failure message
   in the table is there deliberately.
+
+---
+
+## T7 — Data layer (2026-07-11)
+
+Not styling, but the decisions that make the styled states *reachable*:
+
+- **TanStack Query** because loading/error/empty are first-class states in
+  it — `isPending` maps to Skeleton, `error` to ErrorState, empty data to
+  EmptyState. The design system's states plug straight into the data
+  layer's state machine; hand-rolled `useEffect` fetching is where "forgot
+  the error state" bugs come from.
+- Query defaults: `staleTime: 5s` (live-ish dashboard without hammering the
+  gateway), `retry: 1` (a dev stack that's down stays down — fail fast into
+  ErrorState instead of spinning three times), `refetchOnWindowFocus: true`
+  (alt-tab back to the dashboard = "what's the state now?" — refetch *is*
+  the feature).
+- **`apiFetch` normalizes every failure into `ApiError{status, message}`** —
+  including Nest's `message: string[]` validation shape — so ErrorState
+  always has something human to show. The alternative (each call site
+  interpreting response bodies) scatters that logic across every feature.
+  `credentials: 'include'` lives here once, because the gateway's session
+  cookie is the only auth this app has.
+- **`useSse` reports status, never re-dials**: EventSource reconnects on
+  its own; a hook that closed + reopened on error would fight the browser.
+  Status exists purely so the Logs page can show a "reconnecting…" banner.
+  `url: null` = disconnected-by-design (stream paused). Latest-callback ref
+  so consumers can pass inline closures without resubscribing the stream
+  every render.
+- **Socket factory is lazy** (`autoConnect: false`): notification-service
+  verifies a gateway-minted ticket at handshake (ADR-0007), so the caller
+  must fetch the ticket *first* — the factory makes the wrong order
+  unrepresentable by not connecting on creation.

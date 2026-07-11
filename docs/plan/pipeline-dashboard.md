@@ -93,7 +93,7 @@ Concretely, milestone sequence — each ends with a working, reviewable state:
   - Verify: visual pass in browser; this page is the M1 review gate
   - Files: `apps/dashboard/src/app/kitchen-sink.tsx` + route entry
 
-- [ ] **T7: Data layer**
+- [x] **T7: Data layer** (done 2026-07-11)
   - Acceptance: typed fetch wrapper (credentials included, error normalization), TanStack Query provider wired, `useSse` hook (EventSource lifecycle), socket.io client factory; unit tests for wrapper + hook
   - Verify: `pnpm nx test dashboard`
   - Files: `apps/dashboard/src/lib/*` (~5 files)
