@@ -73,7 +73,7 @@ Concretely, milestone sequence — each ends with a working, reviewable state:
   - Verify: token classes render on the default page; serve + build green
   - Files: `apps/dashboard/src/styles/*`, `vite.config.ts`, `DECISIONS.md`
 
-- [ ] **T3: App shell + routing**
+- [x] **T3: App shell + routing** (done 2026-07-11)
   - Acceptance: React Router with layout shell (sidebar nav), 5 stub routes (status/trigger/logs/trace/analytics), active-state nav; responsive at 1440/768; annotated
   - Verify: navigate all routes in browser at both widths
   - Files: `apps/dashboard/src/app/*` (~4 files), `DECISIONS.md`

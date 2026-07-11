@@ -98,3 +98,52 @@ decision above was made so it won't require rework.
   Shadows are for things that float (menus, dialogs).
 - Status dots are `size-3 rounded-full` next to mono labels: color plus
   text, never color alone (colorblind users; also greyscale printouts).
+
+---
+
+## T3 — App shell + routing (2026-07-11)
+
+### Sidebar, not top nav (on desktop)
+
+Dev/ops tools near-universally use a left sidebar (Grafana, Datadog, RabbitMQ
+mgmt): vertical lists scan faster than horizontal ones, grow without
+reflowing the page, and leave the full viewport width for data — which a
+logs/trace view will need. Width `w-56` (224px): fits the longest label plus
+active-state padding with room to spare, small enough not to steal space
+from tables. Fixed width (not `max-content`) so the content area doesn't
+shift when labels change.
+
+### Active nav state: tint + color, not borders or inversion
+
+Active item = `bg-primary/10 text-primary font-medium`. A 10% tint of the
+accent is the quietest treatment that still reads instantly ("lit up"), and
+it reuses the accent's meaning: *interactive/current*. Rejected: left-border
+markers (fight the rounded shape), full-primary background (turns nav into
+five shouting buttons — the strongest treatment must be reserved for real
+actions). Inactive items are `text-muted-foreground` so the current page is
+also findable by being the only *dark* label.
+
+### Responsive: horizontal rail on mobile, no hamburger
+
+Below `md` the same nav renders as a horizontal, scrollable strip under the
+brand (`flex` → `md:flex-col`, `overflow-x-auto`). A hamburger menu would
+hide five links behind a tap to save space we don't need — hamburgers are
+for when nav *can't* fit, not a default. One markup tree, classes flip the
+axis: no duplicated nav to keep in sync.
+
+### Layout mechanics worth knowing
+
+- `md:sticky md:top-0 md:h-screen` on the sidebar: sidebar stays put while
+  content scrolls — persistent orientation, standard tool behavior.
+- `min-w-0` on `<main>`: flex children default to `min-width: auto`, which
+  lets wide content (tables, log lines) blow the layout open instead of
+  scrolling internally. This one class is the classic fix; forget it and
+  the first wide `<pre>` breaks the page.
+- No `max-width` on content: dashboards are data-dense; prose sites cap
+  line length for readability, tools give data the room. Padding steps
+  `p-4 → md:p-8` so small screens don't waste edge space.
+- Root redirect `/` → `/status`: a tool should open on "is everything OK?",
+  not a welcome page. `replace` keeps Back-button history clean.
+- Focus: `focus-visible:outline-primary` (not `focus:`) — visible ring for
+  keyboard users, none on mouse click. Accent-colored ring keeps "interactive"
+  consistent.
