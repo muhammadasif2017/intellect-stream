@@ -78,7 +78,7 @@ Concretely, milestone sequence — each ends with a working, reviewable state:
   - Verify: navigate all routes in browser at both widths
   - Files: `apps/dashboard/src/app/*` (~4 files), `DECISIONS.md`
 
-- [ ] **T4: Core components — feedback set**
+- [x] **T4: Core components — feedback set** (done 2026-07-11)
   - Acceptance: Button, Badge, Card, Spinner + Skeleton; typed variant props; annotated
   - Verify: `pnpm nx test dashboard` (behavioral tests for variants), render on scratch page
   - Files: `apps/dashboard/src/components/*` (~5 files)

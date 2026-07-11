@@ -147,3 +147,62 @@ axis: no duplicated nav to keep in sync.
 - Focus: `focus-visible:outline-primary` (not `focus:`) — visible ring for
   keyboard users, none on mouse click. Accent-colored ring keeps "interactive"
   consistent.
+
+---
+
+## T4 — Feedback components: Button, Badge, Card, Spinner, Skeleton (2026-07-11)
+
+### Button: four variants = a strength hierarchy, not four styles
+
+`primary` (solid accent) / `secondary` (bordered surface) / `ghost` (bare) /
+`danger` (solid red). The discipline they encode: **one primary per view** —
+it marks *the* action; everything else steps down. Danger is solid red and
+visually equal in weight to primary because destructive actions must never
+look incidental. Variants are a union prop, not booleans (`variant="ghost"`,
+never `ghost primary` contradictions — invalid states unrepresentable).
+
+- Fixed heights (`h-8`/`h-9`) instead of vertical padding: buttons, inputs,
+  and selects must share row height or every toolbar looks crooked. Height
+  is the contract; padding only shapes the horizontal.
+- `type="button"` as the default: HTML's default is `submit`, which makes
+  any button inside a form submit it — a classic bug. Tested, because it's
+  behavior, not looks.
+- Loading = spinner **plus** disabled, spinner inherits `currentColor`
+  (white on primary, dark on secondary — free theming via inheritance).
+- Disabled = `opacity-50` on the *whole* button: keeps the variant
+  recognizable ("the primary action exists, just unavailable") instead of
+  swapping to a gray that hides what it was.
+
+### Badge: tinted chip + dark text + dot
+
+Solid-color badges (white on amber) fail contrast and make a table of
+statuses look like a fruit machine. The quiet pattern: 50-shade tinted
+background with a 700-shade text of the same hue — AA contrast, low noise —
+plus a small solid dot in the raw status hue so the color anchor stays
+strong at a glance. Text label always present (never color alone —
+colorblindness, greyscale). `rounded-full` + `text-xs`: chips read as
+metadata, not buttons; the pill shape distinguishes "state" from anything
+clickable (which is `rounded-md` here).
+
+### Card: compound slots, not a prop bag
+
+`Card` + `CardHeader` + `CardContent` compose, rather than one `<Card
+title description footer …>` prop-bag. Slots keep layout ownership in the
+component (consistent padding/border everywhere) while content stays free.
+Header bottom border separates chrome from content; `px-5 py-4` asymmetry
+because horizontal space needs more breathing room than vertical at these
+sizes.
+
+### Spinner & Skeleton: two different "loading" jobs
+
+- **Spinner** = "an action is in flight" (button press, refetch). Quarter-
+  arc over a faint full-circle track: the track shows the path, the arc
+  shows motion — a bare arc looks broken at small sizes. `role="status"` +
+  label for screen readers; the SVG itself `aria-hidden`.
+- **Skeleton** = "this region's shape is known, data isn't" (first load of
+  a card/table). Caller passes the shape (`h-4 w-32`) so the skeleton
+  mirrors the final layout — no reflow jump when data lands. `animate-pulse`
+  not shimmer: pulse is CSS-only and calm; shimmer is marketing-page
+  energy. `aria-hidden` — the *container* announces loading, not ten gray
+  boxes.
+- Rule of thumb encoded: skeleton for first paint, spinner for actions.
