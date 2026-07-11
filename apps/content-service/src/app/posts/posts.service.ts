@@ -31,12 +31,19 @@ export class PostsService {
     });
   }
 
+  // Reads are scoped to approved posts only — pending/rejected content
+  // hasn't cleared moderation and shouldn't be visible through the public
+  // read API just because a caller knows or guesses its id.
   findAll(params: { skip: number; take: number }) {
-    return this.prisma.post.findMany({ skip: params.skip, take: params.take });
+    return this.prisma.post.findMany({
+      where: { status: 'approved' },
+      skip: params.skip,
+      take: params.take,
+    });
   }
 
   findOne(id: string) {
-    return this.prisma.post.findUnique({ where: { id } });
+    return this.prisma.post.findFirst({ where: { id, status: 'approved' } });
   }
 
   async update(id: string, authorId: string, dto: UpdatePostDto) {

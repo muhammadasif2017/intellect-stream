@@ -1,4 +1,4 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import { Prisma } from '../../generated/prisma/client';
@@ -49,17 +49,17 @@ describe('AuthService', () => {
       expect(prismaMock.user.create).toHaveBeenCalledWith({
         data: { email: 'alice@example.com', passwordHash: 'hashed-pw' },
       });
-      expect(result).toEqual({ id: 'u1', email: 'alice@example.com' });
+      expect(result).toEqual({ email: 'alice@example.com' });
       expect(result).not.toHaveProperty('passwordHash');
     });
 
-    it('maps a duplicate email (P2002) to ConflictException', async () => {
+    it('swallows a duplicate email (P2002) and returns the same shape as a fresh registration (no enumeration)', async () => {
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-pw');
       prismaMock.user.create.mockRejectedValue(notFoundError);
 
-      await expect(
-        service.register({ email: 'alice@example.com', password: 'plaintext' }),
-      ).rejects.toThrow(ConflictException);
+      const result = await service.register({ email: 'alice@example.com', password: 'plaintext' });
+
+      expect(result).toEqual({ email: 'alice@example.com' });
     });
 
     it('rethrows non-P2002 errors unchanged', async () => {

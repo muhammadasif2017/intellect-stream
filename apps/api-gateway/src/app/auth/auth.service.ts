@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,20 +15,23 @@ const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', BCRYPT_ROUNDS);
 export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Responds identically whether dto.email was already registered or not —
+  // a distinct status/body here would let an attacker enumerate accounts
+  // (the same reason validateCredentials compares against DUMMY_HASH below).
   async register(dto: RegisterDto) {
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
     try {
-      const user = await this.prisma.user.create({
+      await this.prisma.user.create({
         data: { email: dto.email, passwordHash },
       });
-      return { id: user.id, email: user.email };
     } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        throw new ConflictException('Email already registered');
+      if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')) {
+        throw e;
       }
-      throw e;
     }
+
+    return { email: dto.email };
   }
 
   async validateCredentials(dto: LoginDto) {

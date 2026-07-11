@@ -1,4 +1,4 @@
-import { IsArray, IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 // eventType values (decision 5: AI Processing Service publishes
 // moderation.completed; Content Service is the sole consumer/writer).
@@ -21,6 +21,7 @@ export class ModerationJobPayload {
   postId!: string;
 
   @IsString()
+  @MaxLength(10000)
   content!: string;
 }
 
