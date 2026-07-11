@@ -88,7 +88,7 @@ Concretely, milestone sequence — each ends with a working, reviewable state:
   - Verify: tests + scratch page render
   - Files: `apps/dashboard/src/components/*` (~5 files)
 
-- [ ] **T6: Kitchen-sink page**
+- [x] **T6: Kitchen-sink page** (done 2026-07-11)
   - Acceptance: `/kitchen-sink` route renders every component in every state (incl. loading/empty/error) — living style guide and review artifact
   - Verify: visual pass in browser; this page is the M1 review gate
   - Files: `apps/dashboard/src/app/kitchen-sink.tsx` + route entry

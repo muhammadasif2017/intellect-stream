@@ -264,3 +264,27 @@ why T4 fixed control height instead of using padding.
   retry. Retry button is `secondary`, not primary: the error panel itself
   is already loud; two loud things compete. Red-tinted panel reuses the
   Badge tint pattern (50-bg / 700-800-text).
+
+---
+
+## T6 — Kitchen sink (2026-07-11)
+
+- A living style guide beats a static one because it *breaks visibly*: any
+  styling regression shows up on one page before it shows up scattered
+  across five. It's also where new components must appear first — if a
+  component is awkward to demo here, its API is awkward.
+- Placed at `/kitchen-sink` under a separate `aria-label="Development"` nav
+  section, pinned to the sidebar bottom (`mt-auto`), `text-xs`, hidden on
+  mobile: it must be reachable but must not read as part of the product.
+  Visual demotion (smaller, bottom, muted) is how "for developers only"
+  is said without a lock.
+- Sections are `Card`s in a responsive `xl:grid-cols-2` grid — the sink
+  dogfoods the layout primitives it demonstrates; the table card spans both
+  columns (`xl:col-span-2`) because wide data is its whole point.
+- The loading button is interactive (click → 1.5s spinner) rather than a
+  frozen `isLoading` prop: state transitions are where loading UIs break
+  (layout shift when the spinner appears), and you only see that live.
+- Sample data is *domain* data (correlation IDs, service names, a DLQ
+  failure message) not lorem ipsum: realistic content lengths expose
+  truncation/wrapping problems fake text hides — the long failure message
+  in the table is there deliberately.

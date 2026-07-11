@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
+import { KitchenSink } from './kitchen-sink';
 import { Layout } from './layout';
 import { PagePlaceholder } from './page-placeholder';
 
@@ -58,6 +59,7 @@ export function App() {
             />
           }
         />
+        <Route path="/kitchen-sink" element={<KitchenSink />} />
         <Route
           path="*"
           element={

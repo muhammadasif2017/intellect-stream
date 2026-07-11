@@ -35,6 +35,11 @@ describe('App shell', () => {
     expect(screen.getByRole('heading', { name: heading })).toBeTruthy();
   });
 
+  it('renders the kitchen sink from the development nav', () => {
+    renderAt('/kitchen-sink');
+    expect(screen.getByRole('heading', { name: 'Kitchen sink' })).toBeTruthy();
+  });
+
   it('renders a not-found page for unknown routes', () => {
     renderAt('/nope');
     expect(screen.getByRole('heading', { name: 'Not found' })).toBeTruthy();
