@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadGatewayException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InternalTokenService } from '../auth/internal-token.service';
 
@@ -110,12 +110,21 @@ export class DevStatusService {
   async fetchTrends(days: number): Promise<unknown> {
     const baseUrl = this.config.getOrThrow<string>('ANALYTICS_SERVICE_URL');
     const token = this.internalToken.mint('pipeline-dashboard');
-    const res = await fetch(`${baseUrl}/api/trends?days=${days}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${baseUrl}/api/trends?days=${days}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+      });
+    } catch {
+      // 502 with a culprit, not a bare 500 — the dashboard's ErrorState
+      // shows this message verbatim.
+      throw new BadGatewayException('analytics-service unreachable');
+    }
     if (!res.ok) {
-      throw new Error(`analytics-service responded ${res.status}`);
+      throw new BadGatewayException(
+        `analytics-service responded ${res.status}`,
+      );
     }
     return res.json();
   }
