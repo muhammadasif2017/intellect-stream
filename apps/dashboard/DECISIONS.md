@@ -447,3 +447,38 @@ Same border/focus/invalid skin as Input; `resize-y` only — vertical growth
 is useful, horizontal drag breaks the grid. `maxLength` mirrors the
 backend's 10k cap (defense in depth: the DTO still enforces it server-side;
 the attribute just saves a round-trip).
+
+---
+
+## T17 — Logs page (2026-07-12)
+
+### Filter bar as a row of labeled controls, not a form
+
+No submit button: filters apply as you type/select (the query key includes
+them, so TanStack refetches on change). A "Apply" button would add a step
+to an operation the user does dozens of times while debugging. Fixed widths
+per control (`w-72` for the mono ID, `w-52`/`w-36` for selects) instead of
+a grid: a filter bar reads left-to-right by importance — correlationId
+first, it's the dashboard's primary key.
+
+### Live mode: color only the level word
+
+A log table's loudness budget is tiny. Level word gets the color
+(`error`/`fatal` red, `warn` amber, `debug`/`verbose` muted), everything
+else stays ink — a fully-tinted error row would make three errors look like
+an emergency wall. Timestamp shows `HH:MM:SS.mmm` only (the date is almost
+always "today" in a dev tool; milliseconds matter for ordering pipeline
+hops). `break-all` on messages: correlation ids and JSON fragments have no
+natural word boundaries; without it one long token forces the whole table
+to scroll.
+
+### Live vs. query are different data paths, same table
+
+Query mode asks Redis (server-side filter, bounded scan); live mode
+subscribes once and filters client-side — re-subscribing the EventSource on
+every filter keystroke would drop entries mid-look. The Go live button flips
+`secondary → primary` with a ● dot: state you can see from across the room.
+Live buffer capped at 500 entries (newest first) so an hour of streaming
+can't eat the tab's memory. The reconnect banner rides on `useSse`'s status
+— the browser reconnects by itself; the UI only *tells* you it's happening
+(quiet amber, `role="status"`, not an ErrorState — the stream heals).

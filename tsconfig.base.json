@@ -19,7 +19,8 @@
       "@intellect-stream/shared-messaging": [
         "./libs/shared-messaging/src/index.ts"
       ],
-      "@intellect-stream/shared-redis": ["./libs/shared-redis/src/index.ts"]
+      "@intellect-stream/shared-redis": ["./libs/shared-redis/src/index.ts"],
+      "@intellect-stream/shared-logging": ["./libs/shared-logging/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

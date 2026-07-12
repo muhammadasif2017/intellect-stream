@@ -144,6 +144,23 @@ expose outside dev" boundary still holds via the flag.
   - Verify: gateway unit tests; unauthenticated `/api/dev/status` → 401/403
   - Files: `apps/api-gateway/src/**` (~3 files)
 
+## M4 Tasks (approved for implementation)
+
+- [x] **T15: `libs/shared-logging` — Redis Stream log sink** (done 2026-07-12)
+  - Acceptance: `RedisStreamLogger extends ConsoleLogger`; on top of console output, `XADD`s JSON entries (ts, level, context, message, service) to capped stream `logs:stream` (`MAXLEN ~ 10000`); fire-and-forget (sink failure never breaks logging); enabled only when `LOG_SINK=redis`; wired into all 5 services' bootstrap
+  - Verify: lib unit tests; services still boot
+  - Files: new lib (~4 files) + 5 `main.ts` edits
+
+- [x] **T16: gateway log read API** (done 2026-07-12; live SSE check pending stack run)
+  - Acceptance: `GET /dev/logs?correlationId&service&level&limit` (XREVRANGE + filter) and SSE `GET /dev/logs/stream` (XREAD BLOCK bridge); both behind SessionGuard + dev flag; SSE verified through session middleware (planning risk item)
+  - Verify: gateway unit tests; manual curl/EventSource against live stack
+  - Files: `apps/api-gateway/src/app/dev/*` (~3 files)
+
+- [x] **T17: Logs page** (done 2026-07-12; live visual pass pending stack run)
+  - Acceptance: filter bar (correlationId, service, level) + log table (mono, level-colored, wrapped messages) + live stream toggle (`useSse`, reconnect banner); loading/empty/error states; annotated
+  - Verify: `pnpm nx test dashboard`; visual pass against live stack
+  - Files: `apps/dashboard/src/features/logs/*` (~5 files)
+
 ## Verification checkpoints
 
 - After M1: `pnpm nx serve dashboard` renders shell + components; lint/test green.

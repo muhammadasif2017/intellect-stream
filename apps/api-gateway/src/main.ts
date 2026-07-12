@@ -3,20 +3,21 @@
  * This is only a minimal backend to get started.
  */
 
-import { ConsoleLogger, Logger, ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { RedisStore } from 'connect-redis';
 import session from 'express-session';
 import type { RedisClientType } from 'redis';
+import { createServiceLogger } from '@intellect-stream/shared-logging';
 import { REDIS_CLIENT } from '@intellect-stream/shared-redis';
 import { AppModule } from './app/app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    // ADR-0013: LOG_FORMAT=json emits one-line structured logs for
-    // aggregation; default stays human-readable for local dev.
-    logger: process.env.LOG_FORMAT === 'json' ? new ConsoleLogger({ json: true }) : undefined,
+    // ADR-0013: LOG_FORMAT=json for structured output; LOG_SINK=redis
+    // additionally streams entries to the pipeline dashboard's log sink.
+    logger: createServiceLogger('api-gateway'),
   });
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),

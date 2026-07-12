@@ -3,15 +3,16 @@
  * This is only a minimal backend to get started.
  */
 
-import { ConsoleLogger, Logger, ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { createServiceLogger } from '@intellect-stream/shared-logging';
 import { AppModule } from './app/app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    // ADR-0013: LOG_FORMAT=json emits one-line structured logs for
-    // aggregation; default stays human-readable for local dev.
-    logger: process.env.LOG_FORMAT === 'json' ? new ConsoleLogger({ json: true }) : undefined,
+    // ADR-0013: LOG_FORMAT=json for structured output; LOG_SINK=redis
+    // additionally streams entries to the pipeline dashboard's log sink.
+    logger: createServiceLogger('content-service'),
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }));
   const globalPrefix = 'api';

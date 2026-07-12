@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { AuthGate } from '../features/auth/auth-gate';
+import { LogsPage } from '../features/logs/logs-page';
 import { StatusPage } from '../features/status/status-page';
 import { TriggerPage } from '../features/trigger/trigger-page';
 import { KitchenSink } from './kitchen-sink';
@@ -22,16 +23,7 @@ function AppRoutes() {
         <Route index element={<Navigate to="/status" replace />} />
         <Route path="/status" element={<StatusPage />} />
         <Route path="/trigger" element={<TriggerPage />} />
-        <Route
-          path="/logs"
-          element={
-            <PagePlaceholder
-              title="Logs"
-              description="Structured logs across all services — filter or stream live."
-              milestone="M4"
-            />
-          }
-        />
+        <Route path="/logs" element={<LogsPage />} />
         <Route
           path="/trace"
           element={
