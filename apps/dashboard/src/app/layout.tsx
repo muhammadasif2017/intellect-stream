@@ -2,6 +2,8 @@ import { NavLink, Outlet } from 'react-router-dom';
 
 import { Button } from '../components';
 import { useLogout, useMe } from '../features/auth/use-auth';
+import { NotificationToasts } from '../features/notifications/notification-toasts';
+import { useModerationNotifications } from '../features/notifications/use-moderation-notifications';
 
 const navItems = [
   { to: '/status', label: 'Status' },
@@ -14,6 +16,9 @@ const navItems = [
 export function Layout() {
   const { data: user } = useMe();
   const logout = useLogout();
+  /* Socket lives here (inside AuthGate, above all routes) so its lifetime
+   * matches the session — pushes arrive no matter which page is open. */
+  const { notifications, dismiss } = useModerationNotifications();
 
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans text-foreground md:flex-row">
@@ -87,6 +92,7 @@ export function Layout() {
       <main className="min-w-0 flex-1 p-4 md:p-8">
         <Outlet />
       </main>
+      <NotificationToasts notifications={notifications} onDismiss={dismiss} />
     </div>
   );
 }
