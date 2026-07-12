@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import { ApiError, apiFetch } from '../../lib/api';
 
@@ -8,6 +13,16 @@ export interface User {
 }
 
 const ME_KEY = ['me'] as const;
+
+/* Entering a session starts from a clean cache: after a session-expiry
+ * eviction (see lib/query.tsx) or an account switch, leftover queries
+ * belong to the old session. Mirror of the useLogout cleanup — the purge
+ * happens here rather than at eviction time because removing queries that
+ * are still mounted makes React Query refetch them in a loop. */
+function enterSession(queryClient: QueryClient, user: User) {
+  queryClient.setQueryData(ME_KEY, user);
+  queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== ME_KEY[0] });
+}
 
 /* null = "not logged in" — a data value, not an error. Only real failures
  * (gateway down, 500) reach the error state; a 401 is the normal anonymous
@@ -36,7 +51,7 @@ export function useLogin() {
         method: 'POST',
         body: JSON.stringify(input),
       }),
-    onSuccess: (user) => queryClient.setQueryData(ME_KEY, user),
+    onSuccess: (user) => enterSession(queryClient, user),
   });
 }
 
@@ -55,7 +70,7 @@ export function useRegister() {
         body: JSON.stringify(input),
       });
     },
-    onSuccess: (user) => queryClient.setQueryData(ME_KEY, user),
+    onSuccess: (user) => enterSession(queryClient, user),
   });
 }
 
