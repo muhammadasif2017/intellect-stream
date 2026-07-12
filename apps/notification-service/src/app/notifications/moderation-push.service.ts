@@ -61,7 +61,12 @@ export class ModerationPushService implements OnModuleInit {
     if (sockets.length === 0) {
       // Best-effort live push (interview doc Q13) — a user with no open
       // socket simply misses it. No queue, no persistence, no DB in this
-      // service by design (decision 20).
+      // service by design (decision 20). Still a stage marker: without it
+      // the trace view can't tell "dropped, nobody listening" from "event
+      // never reached this service".
+      this.logger.warn(
+        `No open socket for user ${payload.authorId}, dropping verdict for post ${payload.postId} correlationId=${envelope.correlationId}`,
+      );
       return;
     }
 

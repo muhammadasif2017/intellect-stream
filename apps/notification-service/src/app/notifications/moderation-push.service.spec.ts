@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import type { Socket } from 'socket.io';
 import { MessageEnvelope } from '@intellect-stream/shared-messaging';
 import { ModerationCompletedPayload } from '@intellect-stream/shared-dtos';
@@ -66,12 +67,16 @@ describe('ModerationPushService', () => {
     }
   });
 
-  it('does nothing (no throw) when the author has no live sockets', async () => {
+  it('logs a stage marker (with correlationId) and does not throw when the author has no live sockets', async () => {
     registryMock.getSockets.mockReturnValue([]);
+    const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
 
     await expect(
       getHandler()(envelope({ postId: 'p1', verdict: 'approved', categories: [], authorId: 'u1' })),
     ).resolves.toBeUndefined();
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('correlationId=c1'));
+    warnSpy.mockRestore();
   });
 
   it('drops the event and never looks up the registry when authorId is missing', async () => {
