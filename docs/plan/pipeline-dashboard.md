@@ -161,6 +161,18 @@ expose outside dev" boundary still holds via the flag.
   - Verify: `pnpm nx test dashboard`; visual pass against live stack
   - Files: `apps/dashboard/src/features/logs/*` (~5 files)
 
+## M5 Tasks (approved for implementation)
+
+- [x] **T18: stage-marker log lines** (done 2026-07-12)
+  - Acceptance: one positive-path `logger.log` per pipeline hop (gateway forward, post created, relay→rabbitmq, AI verdict, verdict applied, relay→kafka, analytics aggregated, notification pushed), each ending `correlationId=<id>`; all service tests still green
+  - Verify: `nx run-many -t test` across services
+  - Files: 7 service files
+
+- [x] **T19: Trace page** (done 2026-07-12; live pass pending stack run)
+  - Acceptance: `/trace?correlationId=…` renders an 8-stage vertical timeline derived from `/api/dev/logs?correlationId=`; per-stage status (pending/done/error), latency deltas from timestamps, matched log lines under each stage; polls every 2s until the chain completes or errors; empty/error states; annotated
+  - Verify: `pnpm nx test dashboard` (derivation unit-tested); live pass pending stack run
+  - Files: `apps/dashboard/src/features/trace/*` (~4 files), route swap
+
 ## Verification checkpoints
 
 - After M1: `pnpm nx serve dashboard` renders shell + components; lint/test green.

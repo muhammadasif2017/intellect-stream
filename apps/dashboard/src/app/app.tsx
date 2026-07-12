@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthGate } from '../features/auth/auth-gate';
 import { LogsPage } from '../features/logs/logs-page';
 import { StatusPage } from '../features/status/status-page';
+import { TracePage } from '../features/trace/trace-page';
 import { TriggerPage } from '../features/trigger/trigger-page';
 import { KitchenSink } from './kitchen-sink';
 import { Layout } from './layout';
@@ -24,16 +25,7 @@ function AppRoutes() {
         <Route path="/status" element={<StatusPage />} />
         <Route path="/trigger" element={<TriggerPage />} />
         <Route path="/logs" element={<LogsPage />} />
-        <Route
-          path="/trace"
-          element={
-            <PagePlaceholder
-              title="Trace"
-              description="Follow one correlation ID through every pipeline stage."
-              milestone="M5"
-            />
-          }
-        />
+        <Route path="/trace" element={<TracePage />} />
         <Route
           path="/analytics"
           element={

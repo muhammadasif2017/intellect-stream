@@ -97,6 +97,10 @@ export class OutboxRelayService {
               where: { id: row.id },
               data: { publishedAt: new Date() },
             });
+            // Stage marker for the dashboard's trace view.
+            this.logger.log(
+              `Published ${row.eventType} to ${route.broker} correlationId=${row.correlationId}`,
+            );
           } catch (err) {
             this.logger.error(
               `Failed to publish outbox row ${row.id}, will retry next poll`,

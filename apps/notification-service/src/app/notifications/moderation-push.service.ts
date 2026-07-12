@@ -72,5 +72,9 @@ export class ModerationPushService implements OnModuleInit {
         categories: payload.categories,
       });
     }
+    // Stage marker for the dashboard's trace view.
+    this.logger.log(
+      `Pushed verdict for post ${payload.postId} to ${sockets.length} socket(s) correlationId=${envelope.correlationId}`,
+    );
   }
 }

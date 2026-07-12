@@ -73,6 +73,10 @@ export class TrendsService implements OnModuleInit {
           });
         }
       });
+      // Stage marker for the dashboard's trace view.
+      this.logger.log(
+        `Trend aggregated for post ${payload.postId} (${payload.verdict}) correlationId=${envelope.correlationId}`,
+      );
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         this.logger.warn(`Duplicate delivery of message ${envelope.messageId}, skipping`);

@@ -80,6 +80,11 @@ export class ModerationConsumerService implements OnModuleInit {
       };
       await this.publisher.publish(MODERATION_COMPLETED_QUEUE, outEnvelope);
 
+      // Stage marker for the dashboard's trace view.
+      this.logger.log(
+        `Moderation verdict '${verdict}' for post ${payload.postId} published correlationId=${envelope.correlationId}`,
+      );
+
       await this.redis.set(dedupeKey, 'done', { EX: DONE_TTL_SECONDS });
     } catch (err) {
       await this.redis.del(dedupeKey);

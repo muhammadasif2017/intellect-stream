@@ -51,6 +51,12 @@ export class PostsProxyService {
       throw new InternalServerErrorException('Content service unavailable');
     }
 
+    // Stage marker for the dashboard's trace view: one positive-path log
+    // per pipeline hop, always ending in correlationId=<id>.
+    this.logger.log(
+      `${method} ${path} forwarded, upstream ${res.status} correlationId=${correlationId}`,
+    );
+
     if (res.status === 204) {
       return { status: res.status, body: undefined, correlationId };
     }

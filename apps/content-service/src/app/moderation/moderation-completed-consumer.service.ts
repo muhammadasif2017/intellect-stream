@@ -65,6 +65,10 @@ export class ModerationCompletedConsumerService implements OnModuleInit {
           },
         });
       });
+      // Stage marker for the dashboard's trace view.
+      this.logger.log(
+        `Post ${payload.postId} status set to '${payload.verdict}' correlationId=${envelope.correlationId}`,
+      );
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         this.logger.warn(`Duplicate delivery of message ${envelope.messageId}, skipping`);

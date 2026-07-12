@@ -482,3 +482,42 @@ Live buffer capped at 500 entries (newest first) so an hour of streaming
 can't eat the tab's memory. The reconnect banner rides on `useSse`'s status
 — the browser reconnects by itself; the UI only *tells* you it's happening
 (quiet amber, `role="status"`, not an ErrorState — the stream heals).
+
+---
+
+## T18/T19 — Trace (2026-07-12)
+
+### The trace is a *derivation*, not infrastructure
+
+Eight stage-marker log lines (one per pipeline hop, each ending
+`correlationId=<id>`) plus a pure function `deriveTrace(entries)` — no
+OpenTelemetry, no span store. The stage definitions match on
+service+context (and broker name for the relay's two publishes), so the
+whole feature is testable as data-in/data-out; the page is just a renderer
+over it. When OTel arrives someday (ADR-0013 deferral), only the derivation
+swaps.
+
+### Vertical timeline, not a horizontal pipeline diagram
+
+Hops are sequential and each carries text (log lines, latency); vertical
+lists scale to any content height and read top-to-bottom like the logs they
+come from. A horizontal boxes-and-arrows diagram looks like the README
+architecture art but fits ~0 lines of evidence per stage. Timeline
+mechanics: per-row connector line (`absolute` hairline that skips the last
+row), dot = state (filled emerald done, filled red failed, hollow border
+pending), *whole row* at `opacity-50` when pending — the unreached future
+is visible but muted, so progress reads as the page "filling in".
+
+### Latency chips: delta, not absolute time
+
+`+1.95s` next to a stage answers the actual question ("where does the time
+go?"); absolute timestamps answer nothing you can't get in Logs. The chip
+is mono muted — data, not decoration. Page header shows total once settled.
+
+### Polling that knows when to stop
+
+`refetchInterval` is a function: 2s while the chain is in flight, `false`
+once settled (all stages done, or any stage errored). A monitor that keeps
+polling a finished trace is noise; one that stops early misses the tail.
+The in-flight state is *announced* ("Message in flight — refreshing every
+2s…", `role="status"`) — same polling-honesty rule as the Status page.

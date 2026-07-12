@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { MODERATION_JOB_EVENT_TYPE, ModerationJobPayload } from "@intellect-stream/shared-dtos";
 import { PrismaService } from "../prisma/prisma.service";
@@ -9,18 +9,21 @@ import { Prisma } from "../../generated/prisma/client";
 
 @Injectable()
 export class PostsService {
+  private readonly logger = new Logger(PostsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
-  create(authorId: string, dto: CreatePostDto, correlationId?: string) {
-    return this.prisma.$transaction(async (tx) => {
-      const post = await tx.post.create({ data: { ...dto, authorId } });
+  async create(authorId: string, dto: CreatePostDto, correlationId?: string) {
+    // Gateway-minted when the request came through the edge (ADR-0013);
+    // minted here only for callers that bypass the gateway (tests, curl).
+    const resolvedCorrelationId = correlationId ?? randomUUID();
+    const post = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.post.create({ data: { ...dto, authorId } });
 
-      const payload: ModerationJobPayload = { postId: post.id, content: post.content };
+      const payload: ModerationJobPayload = { postId: created.id, content: created.content };
       await tx.outboxMessage.create({
         data: {
-          // Gateway-minted when the request came through the edge (ADR-0013);
-          // minted here only for callers that bypass the gateway (tests, curl).
-          correlationId: correlationId ?? randomUUID(),
+          correlationId: resolvedCorrelationId,
           eventType: MODERATION_JOB_EVENT_TYPE,
           source: 'content-service',
           // Prisma's Json input type wants an index signature a class instance
@@ -29,8 +32,13 @@ export class PostsService {
         },
       });
 
-      return post;
+      return created;
     });
+    // Stage marker for the dashboard's trace view (see PostsProxyService).
+    this.logger.log(
+      `Post ${post.id} created, outbox row written correlationId=${resolvedCorrelationId}`,
+    );
+    return post;
   }
 
   // Reads are scoped to approved posts only — pending/rejected content
