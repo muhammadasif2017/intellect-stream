@@ -59,4 +59,13 @@ export class DevController {
     this.assertEnabled();
     return this.logs.stream();
   }
+
+  @Get('trends')
+  async getTrends(@Query('days') days?: string) {
+    this.assertEnabled();
+    const parsed = Number(days);
+    return this.status.fetchTrends(
+      Number.isFinite(parsed) && parsed > 0 ? parsed : 14,
+    );
+  }
 }

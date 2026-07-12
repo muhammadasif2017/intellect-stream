@@ -173,6 +173,18 @@ expose outside dev" boundary still holds via the flag.
   - Verify: `pnpm nx test dashboard` (derivation unit-tested); live pass pending stack run
   - Files: `apps/dashboard/src/features/trace/*` (~4 files), route swap
 
+## M6 Tasks (approved for implementation)
+
+- [x] **T20: trends read API** (done 2026-07-12)
+  - Acceptance: analytics-service `GET /api/trends?days=` returns ModerationTrend rows (internal-token guarded, per ADR-0007 — analytics gains the guard + `INTERNAL_JWT_SECRET`); gateway `GET /dev/trends` proxies it with a minted token (session + dev flag)
+  - Verify: unit tests both services
+  - Files: analytics `auth/` + controller (~5 files), gateway dev module (~2 files)
+
+- [x] **T21: Analytics page** (done 2026-07-12; live pass pending stack run)
+  - Acceptance: stat tile row (total moderated, approval rate, avg chain duration) + charts: verdicts-per-day stacked bars (status hues + legend), category totals bar, avg stage latency bar (derived via `deriveTrace` over recent logs); loading/empty/error states; dataviz rules applied (one axis, thin marks, tooltips, text in ink not series color); annotated
+  - Verify: `pnpm nx test dashboard`; live pass pending stack run
+  - Files: `apps/dashboard/src/features/analytics/*` (~5 files), route swap
+
 ## Verification checkpoints
 
 - After M1: `pnpm nx serve dashboard` renders shell + components; lint/test green.

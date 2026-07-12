@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
+import { AnalyticsPage } from '../features/analytics/analytics-page';
 import { AuthGate } from '../features/auth/auth-gate';
 import { LogsPage } from '../features/logs/logs-page';
 import { StatusPage } from '../features/status/status-page';
@@ -26,16 +27,7 @@ function AppRoutes() {
         <Route path="/trigger" element={<TriggerPage />} />
         <Route path="/logs" element={<LogsPage />} />
         <Route path="/trace" element={<TracePage />} />
-        <Route
-          path="/analytics"
-          element={
-            <PagePlaceholder
-              title="Analytics"
-              description="Throughput, moderation verdicts, and stage latency."
-              milestone="M6"
-            />
-          }
-        />
+        <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/kitchen-sink" element={<KitchenSink />} />
         <Route
           path="*"

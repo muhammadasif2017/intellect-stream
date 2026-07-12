@@ -103,6 +103,23 @@ export class DevStatusService {
     return [self, ...(await Promise.all(probes))];
   }
 
+  /* Trends proxy (M6): the dashboard can't reach analytics-service
+   * directly (CORS + auth live at the gateway); same trust path as the
+   * outbox probe. Failures propagate — the Analytics page owns its
+   * ErrorState, unlike the status snapshot's inline sections. */
+  async fetchTrends(days: number): Promise<unknown> {
+    const baseUrl = this.config.getOrThrow<string>('ANALYTICS_SERVICE_URL');
+    const token = this.internalToken.mint('pipeline-dashboard');
+    const res = await fetch(`${baseUrl}/api/trends?days=${days}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      throw new Error(`analytics-service responded ${res.status}`);
+    }
+    return res.json();
+  }
+
   private async probeOutbox(): Promise<DevStatusSnapshot['outbox']> {
     try {
       const baseUrl = this.config.getOrThrow<string>('CONTENT_SERVICE_URL');

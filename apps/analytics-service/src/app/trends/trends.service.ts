@@ -38,6 +38,18 @@ export class TrendsService implements OnModuleInit {
     );
   }
 
+  /* Read side (dashboard, via gateway proxy): raw rows, newest day first —
+   * shaping into chart series is the client's concern. */
+  trendsSince(days: number) {
+    const cutoff = new Date();
+    cutoff.setUTCDate(cutoff.getUTCDate() - days);
+    return this.prisma.moderationTrend.findMany({
+      where: { date: { gte: toDateOnly(cutoff) } },
+      orderBy: { date: 'desc' },
+      select: { date: true, category: true, verdict: true, count: true },
+    });
+  }
+
   private async handle(envelope: MessageEnvelope<ModerationCompletedPayload>) {
     // ADR-0012: a version from the future is permanent for this consumer —
     // rethrowing would make kafkajs retry forever and block the partition

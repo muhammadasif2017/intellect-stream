@@ -8,6 +8,8 @@ export const analyticsServiceEnvSchema = baseEnvSchema.extend({
   // Kafka client id is a compile-time constant (KafkaMessagingModule.forRoot()
   // in app.module.ts), not env-configured — see ADR-0009.
   KAFKA_BROKERS: z.string().min(1, 'KAFKA_BROKERS is required'),
+  // ADR-0007: the trends read API verifies gateway-minted tokens.
+  INTERNAL_JWT_SECRET: z.string().min(1, 'INTERNAL_JWT_SECRET is required'),
 });
 
 export type AnalyticsServiceEnv = z.infer<typeof analyticsServiceEnvSchema>;

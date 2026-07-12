@@ -521,3 +521,47 @@ once settled (all stages done, or any stage errored). A monitor that keeps
 polling a finished trace is noise; one that stops early misses the tail.
 The in-flight state is *announced* ("Message in flight — refreshing every
 2s…", `role="status"`) — same polling-honesty rule as the Status page.
+
+---
+
+## T21 — Analytics page (2026-07-12)
+
+### Form follows the data's job (dataviz method)
+
+- Headline numbers → **stat tile row** (never a grouped bar chart of four
+  values).
+- Verdicts over time → **stacked bars per day**: the day's total *and* its
+  composition in one mark. Stack order approved→pending→rejected so the
+  "bad" segment sits on top where composition changes are easiest to read;
+  only the top segment gets the 4px rounded data-end (rounding every
+  segment makes the stack read as separate pills).
+- Categories & stage latency → **horizontal bars**: labels are words, and
+  words read horizontally; both are magnitude-only, so a single accent hue
+  (multi-coloring a ranking is decoration pretending to be information).
+  Value labels sit at the bar end (`position: right`) in ink — text never
+  wears the series color.
+
+### Color discipline
+
+Verdict hues are the *status* palette (approved=emerald, rejected=red,
+pending=amber) because verdicts ARE states — with a legend, never color
+alone. No categorical palette was invented anywhere on the page, which is
+what keeps it out of colorblind-validation territory: one semantic set +
+one accent. Hex values are inlined (Recharts writes SVG `fill`
+attributes), each traced to its token in styles.css.
+
+### Chart chrome recedes
+
+`tickLine`/`axisLine` off, 12px ink-muted ticks, horizontal gridlines only
+(they help read values; vertical ones just draw a cage), white 2px strokes
+between stacked segments (the spacer rule), hover cursor is a whisper-tint
+(`#f8fafc`, the page background). The data is the loudest thing on the
+chart or the chart is wrong.
+
+### Latency reuses the trace derivation
+
+`stageLatencyAverages` groups a 1000-entry log sample by correlationId and
+runs each group through the *same* `deriveTrace` as the Trace page — one
+definition of "stage", two consumers. Charts height scales with row count
+(`rows * 36px`): horizontal bar charts with fixed heights either squash or
+drown their bars.
