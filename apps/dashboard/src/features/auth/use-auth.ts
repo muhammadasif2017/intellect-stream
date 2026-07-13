@@ -14,8 +14,8 @@ export interface User {
 
 const ME_KEY = ['me'] as const;
 
-/* Entering a session starts from a clean cache: after a session-expiry
- * eviction (see lib/query.tsx) or an account switch, leftover queries
+/* Entering a session starts from a clean cache (ADR-0014): after a
+ * session-expiry eviction (see lib/query.tsx) or an account switch, leftover queries
  * belong to the old session. Mirror of the useLogout cleanup — the purge
  * happens here rather than at eviction time because removing queries that
  * are still mounted makes React Query refetch them in a loop. */

@@ -15,7 +15,8 @@ import { ApiError } from './api';
 const ME_KEY = ['me'] as const;
 
 /* A 401 on any request after login means the session cookie expired
- * server-side. Flip `me` to null so AuthGate swaps to the login screen.
+ * server-side (ADR-0014). Flip `me` to null so AuthGate swaps to the
+ * login screen.
  *
  * Deliberately ONLY that — no removeQueries here. Removing a query that
  * still has a mounted observer makes React Query re-create and refetch it
