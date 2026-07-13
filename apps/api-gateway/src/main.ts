@@ -49,6 +49,10 @@ async function bootstrap() {
       secret: config.getOrThrow<string>('SESSION_SECRET'),
       resave: false,
       saveUninitialized: false,
+      // Sliding expiry: every response re-sends the cookie, so the 1h window
+      // counts from last activity, not from login — an actively used session
+      // never expires mid-work (ADR-0014). Idle sessions still die after 1h.
+      rolling: true,
       cookie: {
         httpOnly: true,
         secure: isProduction,

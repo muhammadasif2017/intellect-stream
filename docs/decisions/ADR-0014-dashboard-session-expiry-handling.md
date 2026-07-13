@@ -56,7 +56,9 @@ the redirect) and keeps the existing single retry for everything else.
   whole app.
 - **Rolling sessions on the gateway** (`rolling: true`): complementary, not
   an alternative — it reduces how often active users expire but cannot
-  eliminate expiry. Deferred as a separate gateway decision.
+  eliminate expiry (idle sessions still die at maxAge). Adopted alongside
+  this ADR: the gateway now slides the 1h window on every request, so the
+  login-screen fallback only triggers after real inactivity.
 
 ## Consequences
 - Session expiry now degrades to the login screen; after re-login the cache
