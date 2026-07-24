@@ -36,7 +36,7 @@
     "express-session": "^1.19.0",
     "kafkajs": "^2.2.4",
     "pg": "^8.22.0",
-    "react": "^19.0.0",
+    "react": "^19.2.8",
     "react-dom": "^19.0.0",
     "react-router-dom": "6.30.3",
     "recharts": "^3.9.2",
